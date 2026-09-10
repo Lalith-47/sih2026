@@ -19,9 +19,11 @@ import {
 import { getProjects } from '@/data/mockProjects';
 import { Project, ProjectStatus } from '@/types/project';
 import { getStatusBadge } from '@/components/public/ProjectCard';
+import { useSession } from '@/lib/auth-client';
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -96,6 +98,34 @@ export default function AdminDashboard() {
           </button>
         </div>
       )}
+
+      {/* Officer Auth Status Banner */}
+      <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs ${
+        session?.user 
+          ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300' 
+          : 'bg-gray-900/60 border-gray-800 text-gray-400'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <span className={`w-2 h-2 rounded-full ${session?.user ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+          {session?.user ? (
+            <span>
+              Authenticated as <strong className="text-white font-mono">{session.user.name || session.user.email}</strong> • Verified Officer Credentials Active
+            </span>
+          ) : (
+            <span>
+              Operating in <strong className="text-gray-300 font-mono">Guest Mode</strong> • Sign in with Better Auth to link project baseline records to your officer ID.
+            </span>
+          )}
+        </div>
+        {!session?.user && (
+          <Link
+            href="/login"
+            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-semibold text-[11px] transition-colors"
+          >
+            Officer Sign In
+          </Link>
+        )}
+      </div>
 
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
