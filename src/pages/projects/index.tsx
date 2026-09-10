@@ -11,9 +11,61 @@ export default function ProjectsIndexPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [loading, setLoading] = useState(true);
+  const [apiNotice, setApiNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    setProjects(getProjects());
+    const loadProjects = async () => {
+      try {
+        const local = getProjects();
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const res = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.projects && Array.isArray(data.projects)) {
+            const backendProjects: Project[] = data.projects.map((bp: any) => ({
+              id: bp.id,
+              name: bp.name,
+              code: bp.code,
+              wbsCode: bp.wbsCode,
+              department: bp.department,
+              category: bp.category,
+              location: bp.location,
+              description: bp.description,
+              baselineStartDate: typeof bp.baselineStartDate === 'string' ? bp.baselineStartDate.slice(0, 10) : '',
+              baselineEndDate: typeof bp.baselineEndDate === 'string' ? bp.baselineEndDate.slice(0, 10) : '',
+              currentProgress: bp.currentProgress || 0,
+              plannedProgress: bp.plannedProgress || 0,
+              status: bp.status,
+              budget: bp.budget,
+              spent: bp.spent,
+              supervisor: bp.supervisor,
+              contractor: bp.contractor,
+              timelineData: [],
+              recentUpdates: [],
+            }));
+
+            const combined = [...backendProjects];
+            for (const lp of local) {
+              if (!combined.some((c) => c.code === lp.code || c.id === lp.id)) {
+                combined.push(lp);
+              }
+            }
+            setProjects(combined);
+            setLoading(false);
+            return;
+          }
+        }
+        setProjects(local);
+      } catch (err) {
+        setProjects(getProjects());
+        setApiNotice('SCADA live database sync offline. Displaying local project cache.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
   }, []);
 
   // Available unique categories

@@ -40,8 +40,58 @@ export default function ProjectDetailsPage() {
       const found = getProjectById(id);
       if (found) {
         setProject({ ...found });
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      // If not in local store, fetch from backend API
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      fetch(`${apiBase}/api/projects/${id}`, { credentials: 'include' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.project) {
+            const bp = data.project;
+            setProject({
+              id: bp.id,
+              name: bp.name,
+              code: bp.code,
+              wbsCode: bp.wbsCode,
+              department: bp.department,
+              category: bp.category,
+              location: bp.location,
+              description: bp.description,
+              baselineStartDate: typeof bp.baselineStartDate === 'string' ? bp.baselineStartDate.slice(0, 10) : '',
+              baselineEndDate: typeof bp.baselineEndDate === 'string' ? bp.baselineEndDate.slice(0, 10) : '',
+              currentProgress: bp.currentProgress || 0,
+              plannedProgress: bp.plannedProgress || 0,
+              status: bp.status,
+              budget: bp.budget,
+              spent: bp.spent,
+              supervisor: bp.supervisor,
+              contractor: bp.contractor,
+              timelineData: [
+                { date: 'Month 1', plannedProgress: 10, actualProgress: bp.currentProgress / 2 },
+                { date: 'Month 3', plannedProgress: 35, actualProgress: bp.currentProgress },
+              ],
+              recentUpdates: [
+                {
+                  id: `ACT-${bp.id}`,
+                  timestamp: bp.createdAt ? bp.createdAt.replace('T', ' ').slice(0, 16) : '2026-03-01 10:00',
+                  author: bp.supervisor || 'Field Supervisor',
+                  role: 'Executive Engineer',
+                  channel: 'TEXT',
+                  notes: bp.description || 'Baseline parameters recorded into SCADA network.',
+                  progressDelta: bp.currentProgress,
+                  tags: ['#Baseline', '#SCADA'],
+                },
+              ],
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [id]);
 

@@ -30,7 +30,53 @@ export default function AdminDashboard() {
   const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
-    setProjects(getProjects());
+    const loadProjects = async () => {
+      try {
+        const local = getProjects();
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const res = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.projects && Array.isArray(data.projects)) {
+            const backendProjects: Project[] = data.projects.map((bp: any) => ({
+              id: bp.id,
+              name: bp.name,
+              code: bp.code,
+              wbsCode: bp.wbsCode,
+              department: bp.department,
+              category: bp.category,
+              location: bp.location,
+              description: bp.description,
+              baselineStartDate: typeof bp.baselineStartDate === 'string' ? bp.baselineStartDate.slice(0, 10) : '',
+              baselineEndDate: typeof bp.baselineEndDate === 'string' ? bp.baselineEndDate.slice(0, 10) : '',
+              currentProgress: bp.currentProgress || 0,
+              plannedProgress: bp.plannedProgress || 0,
+              status: bp.status,
+              budget: bp.budget,
+              spent: bp.spent,
+              supervisor: bp.supervisor,
+              contractor: bp.contractor,
+              timelineData: [],
+              recentUpdates: [],
+            }));
+
+            const combined = [...backendProjects];
+            for (const lp of local) {
+              if (!combined.some((c) => c.code === lp.code || c.id === lp.id)) {
+                combined.push(lp);
+              }
+            }
+            setProjects(combined);
+            return;
+          }
+        }
+        setProjects(local);
+      } catch {
+        setProjects(getProjects());
+      }
+    };
+
+    loadProjects();
 
     if (router.query.created) {
       setToastMessage(`Project ${router.query.created} was successfully initialized with baseline.`);

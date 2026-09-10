@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createProject } from '@/data/mockProjects';
 import { ProjectStatus } from '@/types/project';
+import { useSession } from '@/lib/auth-client';
 import { 
   Building2, 
   Calendar, 
@@ -11,12 +12,15 @@ import {
   FileText, 
   CheckCircle,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProjectForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [formData, setFormData] = useState({
     name: '',
     wbsCode: '',
@@ -32,8 +36,15 @@ export default function ProjectForm() {
     contractor: '',
   });
 
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (session?.user?.name && !formData.supervisor) {
+      setFormData((prev) => ({ ...prev, supervisor: session.user.name }));
+    }
+  }, [session?.user?.name, formData.supervisor]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -43,7 +54,7 @@ export default function ProjectForm() {
     if (error) setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.wbsCode.trim() || !formData.baselineStartDate || !formData.baselineEndDate) {
@@ -51,19 +62,72 @@ export default function ProjectForm() {
       return;
     }
 
+    setLoading(true);
+    setError('');
+
+    const formattedBudget = formData.budget
+      ? formData.budget.startsWith('₹')
+        ? formData.budget
+        : `₹${formData.budget}`
+      : '₹1,500 Cr';
+
+    const supervisorVal = formData.supervisor || session?.user?.name || 'Field Executive Engineer';
+
     try {
-      const created = createProject({
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const payload = {
+        name: formData.name.trim(),
+        code: formData.wbsCode.trim(),
+        wbsCode: formData.wbsCode.trim(),
+        department: formData.department,
+        category: formData.category,
+        location: formData.location.trim() || 'Pan-India Corridor',
+        budget: formattedBudget,
+        spent: '₹0 Cr',
+        baselineStartDate: new Date(formData.baselineStartDate).toISOString(),
+        baselineEndDate: new Date(formData.baselineEndDate).toISOString(),
+        currentProgress: 0,
+        plannedProgress: 5,
+        status: formData.status,
+        supervisor: supervisorVal,
+        contractor: formData.contractor.trim() || 'National EPC Contractors Ltd',
+        description: formData.description.trim() || 'Infrastructure development project with multi-phase execution.',
+      };
+
+      const res = await fetch(`${apiBase}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 401) {
+        setError('Authentication required: You must be signed in with your Officer account to persist projects to the central PostgreSQL database.');
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.message || 'Failed to persist project to database');
+      }
+
+      const resData = await res.json();
+      const newProjectId = resData.project?.id || `PRJ-${Date.now()}`;
+
+      // Also register in local client store for instant fallback continuity
+      createProject({
         name: formData.name,
         wbsCode: formData.wbsCode,
         department: formData.department,
         category: formData.category,
         location: formData.location || 'Pan-India Corridor',
-        budget: formData.budget ? (formData.budget.startsWith('₹') ? formData.budget : `₹${formData.budget}`) : '₹1,500 Cr',
+        budget: formattedBudget,
         baselineStartDate: formData.baselineStartDate,
         baselineEndDate: formData.baselineEndDate,
         description: formData.description || 'Infrastructure development project with multi-phase execution.',
         status: formData.status,
-        supervisor: formData.supervisor || 'Field Executive Engineer',
+        supervisor: supervisorVal,
         contractor: formData.contractor || 'National EPC Contractors Ltd',
         currentProgress: 0,
         plannedProgress: 5,
@@ -72,10 +136,12 @@ export default function ProjectForm() {
 
       setSubmitted(true);
       setTimeout(() => {
-        router.push(`/admin?created=${created.id}`);
+        router.push(`/admin?created=${newProjectId}`);
       }, 1200);
-    } catch (err) {
-      setError('Failed to create project. Please verify inputs.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create project. Please verify backend connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -284,11 +350,20 @@ export default function ProjectForm() {
             </Link>
             <button
               type="submit"
-              disabled={submitted}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold text-gray-950 bg-emerald-400 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+              disabled={submitted || loading}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold text-gray-950 bg-emerald-400 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <CheckCircle className="w-4 h-4" />
-              <span>Initialize Project Baseline</span>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting to Database...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Initialize Project Baseline</span>
+                </>
+              )}
             </button>
           </div>
         </form>

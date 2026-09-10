@@ -13,6 +13,7 @@ import {
   Volume2
 } from 'lucide-react';
 import { addProjectUpdate } from '@/data/mockProjects';
+import { useSession } from '@/lib/auth-client';
 
 interface ProgressUploaderProps {
   projectId: string;
@@ -27,6 +28,7 @@ export default function ProgressUploader({
   currentProgress,
   onUpdateSubmitted,
 }: ProgressUploaderProps) {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<'excel' | 'text' | 'voice'>('excel');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -38,7 +40,13 @@ export default function ProgressUploader({
 
   // 2. Text tab state
   const [textNotes, setTextNotes] = useState('');
-  const [supervisorName, setSupervisorName] = useState('Er. R. Verma (Site Chief)');
+  const [supervisorName, setSupervisorName] = useState('');
+
+  useEffect(() => {
+    if (session?.user?.name && !supervisorName) {
+      setSupervisorName(session.user.name);
+    }
+  }, [session?.user?.name, supervisorName]);
   const [textDelta, setTextDelta] = useState(0.8);
   const [selectedTags, setSelectedTags] = useState<string[]>(['#DailyProgress']);
 
