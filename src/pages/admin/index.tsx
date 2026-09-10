@@ -20,13 +20,16 @@ import {
   FolderOpen,
   UserCheck,
   ShieldAlert,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Users
 } from 'lucide-react';
 import { Project, ProjectStatus } from '@/types/project';
 import { getStatusBadge } from '@/components/public/ProjectCard';
 import { useSession } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 import AuthGuard from '@/components/auth/AuthGuard';
+import UserManagement from '@/components/admin/UserManagement';
 
 export default function AdminDashboardPage() {
   return (
@@ -52,6 +55,7 @@ function AdminDashboardContent() {
   const { t } = useI18n();
 
   const [officerRole, setOfficerRole] = useState<'ADMIN' | 'SUPERVISOR' | 'VIEWER'>('SUPERVISOR');
+  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'USERS'>('PROJECTS');
   const [stats, setStats] = useState<DashboardStats>({
     totalProjects: 0,
     onTrackCount: 0,
@@ -319,22 +323,67 @@ function AdminDashboardContent() {
           </div>
         </div>
 
-        {/* Role Scoping Explanation Alert */}
-        {officerRole === 'SUPERVISOR' && (
-          <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            <span>{t('dashboard.supervisorScopeNotice', 'Supervisor Scope: Displaying projects assigned to your sector. You can commit daily multimodal progress updates.')}</span>
-          </div>
-        )}
-        {officerRole === 'VIEWER' && (
-          <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{t('dashboard.viewerScopeNotice', 'Read-Only View: Field modifications and project baseline creation are restricted for Viewer role.')}</span>
+        {/* Admin Navigation Tabs (Only available to ADMIN clearance) */}
+        {officerRole === 'ADMIN' && (
+          <div className="flex items-center gap-3 border-b border-slate-200 dark:border-gray-800 pb-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab('PROJECTS')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                activeTab === 'PROJECTS'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 border border-transparent'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Projects Portfolio</span>
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeTab === 'PROJECTS' ? 'bg-slate-950/15 text-slate-950' : 'bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300'
+              }`}>
+                {projects.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('USERS')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                activeTab === 'USERS'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 border border-transparent'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Officer Roster & Access Control</span>
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeTab === 'USERS' ? 'bg-slate-950/15 text-slate-950' : 'bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300'
+              }`}>
+                Admin Portal
+              </span>
+            </button>
           </div>
         )}
 
-        {/* Quick Stats Cards (From PostgreSQL Aggregations) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {officerRole === 'ADMIN' && activeTab === 'USERS' ? (
+          <UserManagement />
+        ) : (
+          <>
+            {/* Role Scoping Explanation Alert */}
+            {officerRole === 'SUPERVISOR' && (
+              <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>{t('dashboard.supervisorScopeNotice', 'Supervisor Scope: Displaying projects assigned to your sector. You can commit daily multimodal progress updates.')}</span>
+              </div>
+            )}
+            {officerRole === 'VIEWER' && (
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{t('dashboard.viewerScopeNotice', 'Read-Only View: Field modifications and project baseline creation are restricted for Viewer role.')}</span>
+              </div>
+            )}
+
+            {/* Quick Stats Cards (From PostgreSQL Aggregations) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl p-4 shadow-md transition-colors">
             <span className="text-xs font-semibold text-slate-500 dark:text-gray-400">
               {t('dashboard.totalPortfolio', 'Total Portfolio')}
@@ -562,6 +611,16 @@ function AdminDashboardContent() {
                               </Link>
                             )}
 
+                            {officerRole === 'VIEWER' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 text-xs font-mono font-medium"
+                                title="Read-Only Clearance: Modification Restricted"
+                              >
+                                <Lock className="w-3 h-3 text-slate-400" />
+                                <span>Read-Only</span>
+                              </span>
+                            )}
+
                             <Link
                               href={`/projects/${proj.id}`}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
@@ -579,6 +638,8 @@ function AdminDashboardContent() {
             </table>
           </div>
         </div>
+        </>
+        )}
       </div>
     </>
   );

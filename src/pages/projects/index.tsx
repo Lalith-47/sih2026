@@ -135,10 +135,10 @@ function ProjectsIndexContent() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-              National Infrastructure Projects
+              {t('dashboard.title', 'National Infrastructure Projects')}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 max-w-2xl mt-1.5 leading-relaxed">
-              Explore multi-modal progress verification and telemetry feeds for priority capital assets across the Republic of India.
+              {t('dashboard.subtitle', 'Explore multi-modal progress verification and telemetry feeds for priority capital assets across the Republic of India.')}
             </p>
           </div>
         </div>
@@ -176,7 +176,7 @@ function ProjectsIndexContent() {
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 hover:text-slate-900 dark:hover:text-white"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Filters</span>
+              <span>{t('common.resetFilters', 'Reset Filters')}</span>
             </button>
           </div>
         ) : (

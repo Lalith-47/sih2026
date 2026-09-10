@@ -37,8 +37,33 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem('infratrack-locale') as Locale | null;
       if (stored && (stored === 'en' || stored === 'hi' || stored === 'kn')) {
         setLocaleState(stored);
+        document.documentElement.lang = stored;
       }
     } catch {}
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'infratrack-locale' && e.newValue) {
+        if (e.newValue === 'en' || e.newValue === 'hi' || e.newValue === 'kn') {
+          setLocaleState(e.newValue);
+          document.documentElement.lang = e.newValue;
+        }
+      }
+    };
+
+    const handleCustomChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Locale>;
+      if (customEvent.detail) {
+        setLocaleState(customEvent.detail);
+        document.documentElement.lang = customEvent.detail;
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('infratrack-locale-change', handleCustomChange);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('infratrack-locale-change', handleCustomChange);
+    };
   }, []);
 
   const setLocale = (newLocale: Locale) => {
@@ -46,6 +71,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem('infratrack-locale', newLocale);
       document.documentElement.lang = newLocale;
+      window.dispatchEvent(new CustomEvent('infratrack-locale-change', { detail: newLocale }));
     } catch {}
   };
 

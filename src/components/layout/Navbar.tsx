@@ -79,22 +79,22 @@ export default function Navbar() {
   const getRoleBadge = (role: 'ADMIN' | 'SUPERVISOR' | 'VIEWER' | null) => {
     if (role === 'ADMIN') {
       return (
-        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-400 border border-rose-800">
-          Admin
+        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800">
+          {t('nav.roleAdmin', 'Admin')}
         </span>
       );
     }
     if (role === 'SUPERVISOR') {
       return (
-        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-blue-950/70 text-blue-400 border border-blue-800">
-          Supervisor
+        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800">
+          {t('nav.roleSupervisor', 'Supervisor')}
         </span>
       );
     }
     if (role === 'VIEWER') {
       return (
-        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-400 border border-amber-800">
-          Viewer
+        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+          {t('nav.roleViewer', 'Viewer')}
         </span>
       );
     }
