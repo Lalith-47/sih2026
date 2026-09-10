@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useTheme } from '@/lib/theme-context';
 
 // Layer 1: Deep Constellation / Topo Grid (Far Depth)
-function DeepSpaceLayer({ scroll }: { scroll: number }) {
+function DeepSpaceLayer({ scroll, isLight }: { scroll: number; isLight: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
 
   const particles = useMemo(() => {
@@ -19,7 +20,6 @@ function DeepSpaceLayer({ scroll }: { scroll: number }) {
 
   useFrame((_, delta) => {
     if (pointsRef.current) {
-      // Subtle continuous drift + slow parallax
       pointsRef.current.rotation.z += delta * 0.02;
       pointsRef.current.position.y = THREE.MathUtils.lerp(
         pointsRef.current.position.y,
@@ -41,9 +41,9 @@ function DeepSpaceLayer({ scroll }: { scroll: number }) {
       </bufferGeometry>
       <pointsMaterial
         size={0.06}
-        color="#10B981"
+        color={isLight ? '#0284C7' : '#10B981'}
         transparent
-        opacity={0.35}
+        opacity={isLight ? 0.45 : 0.35}
         sizeAttenuation
       />
     </points>
@@ -51,14 +51,13 @@ function DeepSpaceLayer({ scroll }: { scroll: number }) {
 }
 
 // Layer 2: Holographic Radar Rings & Coordinate Beams (Mid Depth)
-function MidDepthRadarRings({ scroll }: { scroll: number }) {
+function MidDepthRadarRings({ scroll, isLight }: { scroll: number; isLight: boolean }) {
   const ring1 = useRef<THREE.Mesh>(null);
   const ring2 = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      // Rotate and shift position based on scroll
       groupRef.current.rotation.y += delta * 0.15;
       groupRef.current.position.y = THREE.MathUtils.lerp(
         groupRef.current.position.y,
@@ -80,24 +79,38 @@ function MidDepthRadarRings({ scroll }: { scroll: number }) {
       {/* Outer Telemetry Ring */}
       <mesh ref={ring1} rotation={[Math.PI / 4, 0, 0]}>
         <ringGeometry args={[2.2, 2.24, 48]} />
-        <meshBasicMaterial color="#06B6D4" transparent opacity={0.22} side={THREE.DoubleSide} />
+        <meshBasicMaterial 
+          color={isLight ? '#0284C7' : '#06B6D4'} 
+          transparent 
+          opacity={isLight ? 0.35 : 0.22} 
+          side={THREE.DoubleSide} 
+        />
       </mesh>
       {/* Inner Scanner Disc */}
       <mesh ref={ring2} rotation={[Math.PI / 3, 0, 0]}>
         <ringGeometry args={[1.4, 1.43, 32]} />
-        <meshBasicMaterial color="#10B981" transparent opacity={0.28} side={THREE.DoubleSide} />
+        <meshBasicMaterial 
+          color={isLight ? '#059669' : '#10B981'} 
+          transparent 
+          opacity={isLight ? 0.38 : 0.28} 
+          side={THREE.DoubleSide} 
+        />
       </mesh>
       {/* Coordinate Crosswire */}
       <mesh rotation={[0, 0, Math.PI / 4]}>
         <boxGeometry args={[3.2, 0.015, 0.015]} />
-        <meshBasicMaterial color="#10B981" transparent opacity={0.15} />
+        <meshBasicMaterial 
+          color={isLight ? '#0284C7' : '#10B981'} 
+          transparent 
+          opacity={isLight ? 0.25 : 0.15} 
+        />
       </mesh>
     </group>
   );
 }
 
 // Layer 3: Floating Infrastructure Digital Nodes (Near Depth)
-function NearNodesLayer({ scroll }: { scroll: number }) {
+function NearNodesLayer({ scroll, isLight }: { scroll: number; isLight: boolean }) {
   const nodesGroup = useRef<THREE.Group>(null);
 
   const nodeOffsets = useMemo(
@@ -113,7 +126,6 @@ function NearNodesLayer({ scroll }: { scroll: number }) {
 
   useFrame((state, delta) => {
     if (nodesGroup.current) {
-      // Faster parallax movement creating genuine depth
       nodesGroup.current.position.y = THREE.MathUtils.lerp(
         nodesGroup.current.position.y,
         scroll * 8.5,
@@ -134,10 +146,14 @@ function NearNodesLayer({ scroll }: { scroll: number }) {
           <mesh rotation={[idx * 0.4, idx * 0.6, 0]}>
             <octahedronGeometry args={[0.22, 0]} />
             <meshStandardMaterial
-              color={idx % 2 === 0 ? '#10B981' : '#06B6D4'}
+              color={
+                isLight 
+                  ? (idx % 2 === 0 ? '#059669' : '#0284C7')
+                  : (idx % 2 === 0 ? '#10B981' : '#06B6D4')
+              }
               wireframe
               transparent
-              opacity={0.35}
+              opacity={isLight ? 0.45 : 0.35}
             />
           </mesh>
         </group>
@@ -147,25 +163,29 @@ function NearNodesLayer({ scroll }: { scroll: number }) {
 }
 
 export function ScrollLinkedBackgroundContent() {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const [scrollProgress, setScrollProgress] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    // Check user preference for reduced motion
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(mediaQuery.matches);
 
-    const handleMotionChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      setReducedMotion(e.matches);
+    };
     mediaQuery.addEventListener('change', handleMotionChange);
 
-    // Scroll progress handler
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-          const currentProgress = totalHeight > 0 ? window.scrollY / totalHeight : 0;
-          setScrollProgress(currentProgress);
+          const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+          if (docHeight > 0) {
+            const progress = Math.min(Math.max(window.scrollY / docHeight, 0), 1);
+            setScrollProgress(progress);
+          }
           ticking = false;
         });
         ticking = true;
@@ -181,12 +201,11 @@ export function ScrollLinkedBackgroundContent() {
     };
   }, []);
 
-  // Fallback: If user prefers reduced motion or WebGL is unsupported, render static backdrop
   if (reducedMotion) {
     return (
       <div 
         aria-hidden="true"
-        className="fixed inset-0 pointer-events-none z-0 bg-[#07090E]" 
+        className={`fixed inset-0 pointer-events-none z-0 ${isLight ? 'bg-slate-50' : 'bg-[#07090E]'}`} 
       />
     );
   }
@@ -206,13 +225,21 @@ export function ScrollLinkedBackgroundContent() {
           stencil: false,
         }}
       >
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[5, 5, 5]} intensity={0.6} color="#10B981" />
-        <directionalLight position={[-5, -5, 2]} intensity={0.4} color="#06B6D4" />
+        <ambientLight intensity={isLight ? 0.7 : 0.4} />
+        <directionalLight 
+          position={[5, 5, 5]} 
+          intensity={0.6} 
+          color={isLight ? '#059669' : '#10B981'} 
+        />
+        <directionalLight 
+          position={[-5, -5, 2]} 
+          intensity={0.4} 
+          color={isLight ? '#0284C7' : '#06B6D4'} 
+        />
 
-        <DeepSpaceLayer scroll={scrollProgress} />
-        <MidDepthRadarRings scroll={scrollProgress} />
-        <NearNodesLayer scroll={scrollProgress} />
+        <DeepSpaceLayer scroll={scrollProgress} isLight={isLight} />
+        <MidDepthRadarRings scroll={scrollProgress} isLight={isLight} />
+        <NearNodesLayer scroll={scrollProgress} isLight={isLight} />
       </Canvas>
     </div>
   );
