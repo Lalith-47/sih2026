@@ -8,7 +8,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Loader2,
-  Github,
   Building2,
   HardHat,
   Eye,
@@ -35,9 +34,20 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'github' | 'google' | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'microsoft' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (router.query.error) {
+      const err = String(router.query.error);
+      if (err === 'state_mismatch') {
+        setError('OAuth state verification failed. Please try clicking the button again.');
+      } else {
+        setError(`Authentication error: ${err}`);
+      }
+    }
+  }, [router.query.error]);
 
   // Dynamic roles configuration wired directly to i18n
   const rolesConfig = [
@@ -189,27 +199,31 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
     }
   };
 
-  const handleSocialSignIn = async (provider: 'github' | 'google') => {
+  const handleSocialSignIn = async (provider: 'google' | 'microsoft') => {
     setError(null);
     setOauthLoading(provider);
     try {
       const res = await authClient.signIn.social({
         provider,
         callbackURL: typeof window !== 'undefined' ? `${window.location.origin}/admin` : '/admin',
+        errorCallbackURL: typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login',
       });
       if (res?.error) {
         const msg = res.error.message;
+        const providerName = provider === 'google' ? 'Google' : 'Microsoft';
+        const envVar = provider === 'google' ? 'GOOGLE_CLIENT_ID' : 'MICROSOFT_CLIENT_ID';
         setError(
           msg ||
-          `Unable to initiate ${provider === 'github' ? 'GitHub' : 'Google'} OAuth. Ensure DATABASE_URL and ${provider.toUpperCase()}_CLIENT_ID are set in your backend environment.`
+          `Unable to initiate ${providerName} OAuth. Ensure DATABASE_URL and ${envVar} are set in your backend environment.`
         );
         setOauthLoading(null);
       }
     } catch (err: unknown) {
+      const providerName = provider === 'google' ? 'Google' : 'Microsoft';
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to initiate ${provider} sign-in. Check backend connection.`
+          : `Failed to initiate ${providerName} sign-in. Check backend connection.`
       );
       setOauthLoading(null);
     }
@@ -477,20 +491,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 mt-3">
-          <button
-            type="button"
-            onClick={() => handleSocialSignIn('github')}
-            disabled={oauthLoading !== null || loading}
-            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
-          >
-            {oauthLoading === 'github' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Github className="w-4 h-4 text-slate-900 dark:text-white" />
-            )}
-            <span>GitHub</span>
-          </button>
-
+          {/* Google OAuth (Priority 1) */}
           <button
             type="button"
             onClick={() => handleSocialSignIn('google')}
@@ -520,6 +521,26 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
               </svg>
             )}
             <span>Google</span>
+          </button>
+
+          {/* Microsoft OAuth (Priority 2) */}
+          <button
+            type="button"
+            onClick={() => handleSocialSignIn('microsoft')}
+            disabled={oauthLoading !== null || loading}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+          >
+            {oauthLoading === 'microsoft' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 23 23">
+                <rect fill="#F25022" x="1" y="1" width="10" height="10" />
+                <rect fill="#7FBA00" x="12" y="1" width="10" height="10" />
+                <rect fill="#00A4EF" x="1" y="12" width="10" height="10" />
+                <rect fill="#FFB900" x="12" y="12" width="10" height="10" />
+              </svg>
+            )}
+            <span>Microsoft</span>
           </button>
         </div>
       </div>
