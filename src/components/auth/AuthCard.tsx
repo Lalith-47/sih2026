@@ -13,7 +13,9 @@ import {
   Eye,
   Shield,
   Check,
-  Ban
+  Ban,
+  Sparkles,
+  X
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
@@ -392,19 +394,30 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
         </div>
       </div>
 
-      {/* SSO Unregistered Notice */}
+      {/* Sweet First-Time Sign In Welcome Notice */}
       {unregisteredNotice && (
-        <div className="mb-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 shadow-sm animate-fadeIn">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex-shrink-0">
-              <Shield className="w-5 h-5" />
+        <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/20 dark:border-emerald-500/30 backdrop-blur-sm shadow-sm animate-fadeIn relative">
+          <button
+            type="button"
+            onClick={() => setUnregisteredNotice(false)}
+            className="absolute top-3 right-3 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 transition-colors"
+            title="Dismiss notice"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex items-start gap-3 pr-6">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-gray-950 flex-shrink-0 shadow-md shadow-emerald-500/20">
+              <Sparkles className="w-4 h-4" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                Official Account Not Found
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>Welcome to InfraTrack!</span>
+                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono">
+                  First-Time Sign In
+                </span>
               </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
-                Your SSO authentication was successful, but your email is not yet registered in the InfraTrack roster. Please register your account credentials below to establish your profile, or ask your Department Administrator to provision your role.
+              <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed">
+                Your sign-in was verified successfully! Since this is your first time here, please enter a few quick details below to set up your profile and get started.
               </p>
             </div>
           </div>
