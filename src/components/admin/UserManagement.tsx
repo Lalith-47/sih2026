@@ -81,7 +81,7 @@ export default function UserManagement() {
         body: JSON.stringify({
           name: newName,
           email: newEmail,
-          password: newPassword,
+          password: newPassword ? newPassword : undefined,
           role: newRole,
         }),
       });
@@ -444,20 +444,22 @@ export default function UserManagement() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
-                  Temporary Security Passphrase
+                  Security Passphrase <span className="text-slate-400 font-normal">(Optional for OAuth / SSO)</span>
                 </label>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="password"
-                    required
                     minLength={8}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
+                    placeholder="Leave blank to auto-generate (Officer can sign in via Google/Microsoft)"
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
                   />
                 </div>
+                <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">
+                  If left blank, a secure random key is assigned. The officer can log in with Google or Microsoft OAuth using this email.
+                </p>
               </div>
 
               <div>

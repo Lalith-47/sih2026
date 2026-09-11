@@ -156,6 +156,13 @@ function AdminDashboardContent() {
   useEffect(() => {
     fetchData();
 
+    // Auto-switch tab if specified in URL query
+    if (router.query.tab === 'users') {
+      setActiveTab('USERS');
+    } else if (router.query.tab === 'projects') {
+      setActiveTab('PROJECTS');
+    }
+
     // Auto-refresh on project creation redirect
     if (router.query.created) {
       setToastMessage('New project corridor created successfully.');

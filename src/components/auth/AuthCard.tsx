@@ -37,12 +37,18 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
   const [oauthLoading, setOauthLoading] = useState<'google' | 'microsoft' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [unregisteredNotice, setUnregisteredNotice] = useState(false);
 
   React.useEffect(() => {
     if (router.query.error) {
       const err = String(router.query.error);
       if (err === 'state_mismatch') {
         setError('OAuth state verification failed. Please try clicking the button again.');
+      } else if (err === 'signup_disabled' || err.includes('signup_disabled') || err === 'account_not_found') {
+        setUnregisteredNotice(true);
+        setMode('signup');
+        setSelectedRole('SUPERVISOR');
+        setError(null);
       } else {
         setError(`Authentication error: ${err}`);
       }
@@ -385,6 +391,25 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           </div>
         </div>
       </div>
+
+      {/* SSO Unregistered Notice */}
+      {unregisteredNotice && (
+        <div className="mb-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 shadow-sm animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex-shrink-0">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                Official Account Not Found
+              </h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                Your SSO authentication was successful, but your email is not yet registered in the InfraTrack roster. Please register your account credentials below to establish your profile, or ask your Department Administrator to provision your role.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alert Messages */}
       {error && (

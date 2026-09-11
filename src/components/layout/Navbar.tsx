@@ -12,7 +12,8 @@ import {
   User, 
   LogOut, 
   LogIn,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 import { useSession, signOut } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
@@ -58,6 +59,14 @@ export default function Navbar() {
       requireAuth: true,
       adminOnly: true 
     },
+    { 
+      label: t('nav.manageUsers', 'Manage Users'), 
+      href: '/admin?tab=users', 
+      icon: Users, 
+      showAlways: false, 
+      requireAuth: true,
+      adminOnly: true 
+    },
   ];
 
   const visibleLinks = navLinks.filter((link) => {
@@ -68,6 +77,12 @@ export default function Navbar() {
 
   const isActive = (href: string) => {
     if (href === '/') return router.pathname === '/';
+    if (href.includes('tab=users')) {
+      return router.pathname === '/admin' && router.query.tab === 'users';
+    }
+    if (href === '/admin') {
+      return router.pathname === '/admin' && router.query.tab !== 'users';
+    }
     return router.pathname.startsWith(href);
   };
 
