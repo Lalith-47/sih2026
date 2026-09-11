@@ -198,11 +198,19 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
         callbackURL: typeof window !== 'undefined' ? `${window.location.origin}/admin` : '/admin',
       });
       if (res?.error) {
-        setError(res.error.message || `Failed to initiate ${provider} sign-in.`);
+        const msg = res.error.message;
+        setError(
+          msg ||
+          `Unable to initiate ${provider === 'github' ? 'GitHub' : 'Google'} OAuth. Ensure DATABASE_URL and ${provider.toUpperCase()}_CLIENT_ID are set in your backend environment.`
+        );
         setOauthLoading(null);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `Failed to initiate ${provider} sign-in.`);
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to initiate ${provider} sign-in. Check backend connection.`
+      );
       setOauthLoading(null);
     }
   };

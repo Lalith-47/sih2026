@@ -7,7 +7,11 @@ export const authClient = createAuthClient({
     credentials: "include",
   },
   plugins: [
-    sentinelClient(),
+    sentinelClient({
+      identifyUrl:
+        process.env.NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL ||
+        "https://kv.better-auth.com/projects/WJYfpM60mkk5TCVJYb5opqKTLBcKLazn",
+    }),
   ],
 });
 
