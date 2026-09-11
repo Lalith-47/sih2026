@@ -115,9 +115,6 @@ export default function Navbar() {
                 <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white font-mono">
                   Infra<span className="text-emerald-500 dark:text-emerald-400">Track</span>
                 </span>
-                <span className="text-[10px] uppercase font-semibold tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/50">
-                  SIH 2026
-                </span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-gray-400 font-medium tracking-wide leading-none">
                 {t('nav.brandSubtitle', 'National Digital Twin & SCADA')}

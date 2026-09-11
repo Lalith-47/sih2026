@@ -19,7 +19,6 @@ import {
   RefreshCw,
   FolderOpen,
   UserCheck,
-  ShieldAlert,
   AlertCircle,
   Lock,
   Users
@@ -66,7 +65,6 @@ function AdminDashboardContent() {
   });
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [switchingRole, setSwitchingRole] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [toastMessage, setToastMessage] = useState('');
@@ -138,19 +136,18 @@ function AdminDashboardContent() {
             id: up.id,
             channel: up.channel,
             notes: up.notes,
-            progressDelta: up.progressDelta,
             author: up.author,
             role: up.role,
-            timestamp: new Date(up.createdAt).toLocaleDateString(),
-            tags: up.tags || [],
+            progressDelta: up.progressDelta,
+            tags: up.tags,
+            timestamp: up.timestamp,
           })),
         }));
+
         setProjects(liveProjects);
-      } else {
-        throw new Error('Failed to load project telemetry from database');
       }
-    } catch (err: unknown) {
-      setFetchError(err instanceof Error ? err.message : 'Error connecting to infrastructure database');
+    } catch (err: any) {
+      setFetchError('Failed to synchronize infrastructure telemetry. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -159,35 +156,13 @@ function AdminDashboardContent() {
   useEffect(() => {
     fetchData();
 
+    // Auto-refresh on project creation redirect
     if (router.query.created) {
-      setToastMessage(`Project ${router.query.created} initialized successfully in PostgreSQL baseline.`);
-      const timer = setTimeout(() => setToastMessage(''), 6000);
+      setToastMessage('New project corridor created successfully.');
+      const timer = setTimeout(() => setToastMessage(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [fetchData, router.query]);
-
-  // Role Switcher for instant verification and demonstration of RBAC
-  const handleRoleChange = async (newRole: 'ADMIN' | 'SUPERVISOR' | 'VIEWER') => {
-    setSwitchingRole(true);
-    try {
-      const res = await fetch(`${apiBase}/api/me/role`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ role: newRole }),
-      });
-      if (res.ok) {
-        setOfficerRole(newRole);
-        setToastMessage(`Officer role updated to ${newRole}. View permissions re-scoped.`);
-        setTimeout(() => setToastMessage(''), 5000);
-        await fetchData();
-      }
-    } catch {
-      setToastMessage('Failed to update officer role.');
-    } finally {
-      setSwitchingRole(false);
-    }
-  };
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -294,31 +269,6 @@ function AdminDashboardContent() {
                 <UserCheck className="w-3 h-3" />
                 {officerRole}
               </span>
-            </div>
-          </div>
-
-          {/* Interactive Role Switcher for verification */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 flex items-center gap-1">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
-              <span>Role:</span>
-            </span>
-            <div className="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-gray-950 border border-slate-200 dark:border-gray-800">
-              {(['ADMIN', 'SUPERVISOR', 'VIEWER'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  disabled={switchingRole}
-                  onClick={() => handleRoleChange(r)}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${
-                    officerRole === r
-                      ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                      : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
             </div>
           </div>
         </div>

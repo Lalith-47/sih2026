@@ -59,9 +59,6 @@ export default function LoginPage() {
               <span className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
                 Infra<span className="bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-400 dark:to-cyan-400 bg-clip-text text-transparent">Track</span>
               </span>
-              <span className="text-[10px] font-mono font-bold tracking-widest uppercase bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 px-2 py-0.5 rounded-full backdrop-blur-md">
-                SIH 2026
-              </span>
             </div>
             <p className="text-[10px] font-mono tracking-wider text-slate-500 dark:text-gray-400 hidden sm:block">
               {t('auth.nationalTwin', 'NATIONAL INFRASTRUCTURE DIGITAL TWIN')}

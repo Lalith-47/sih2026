@@ -3,6 +3,7 @@ import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import Navbar from '@/components/layout/Navbar';
 import ScrollLinkedBackgroundWrapper from '@/components/3d/ScrollLinkedBackgroundWrapper';
+import AIChatbot from '@/components/ai/AIChatbot';
 import { ThemeProvider } from '@/lib/theme-context';
 import { I18nProvider } from '@/lib/i18n-context';
 
@@ -29,6 +30,7 @@ export default function App({ Component, pageProps }: AppProps) {
             <main className="flex-1 flex flex-col">
               <Component {...pageProps} />
             </main>
+            {!isLoginPage && <AIChatbot />}
             {!isLoginPage && (
               <footer className="border-t border-slate-200 dark:border-gray-800/80 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md py-8 px-4 sm:px-6 text-center text-xs text-slate-500 dark:text-gray-500">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

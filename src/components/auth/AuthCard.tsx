@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { 
   ShieldCheck, 
-  Mail, 
   Lock, 
   User, 
   ArrowRight, 
@@ -33,8 +32,8 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('admin@infra.gov.in');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'github' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,11 +110,6 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
   const handleRoleSelect = (roleId: UserRole) => {
     setSelectedRole(roleId);
     setError(null);
-    const target = rolesConfig.find((r) => r.id === roleId);
-    if (target && mode === 'signin') {
-      setEmail(target.email);
-      setPassword('Password123!');
-    }
   };
 
   const syncRoleToBackend = async (role: UserRole) => {
@@ -167,8 +161,12 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             else router.push('/admin');
           }, 800);
         } else {
+        const targetEmail = email.includes('@')
+          ? email.trim()
+          : `${email.trim().toLowerCase()}@infra.gov.in`;
+
         const { error: signInError } = await authClient.signIn.email({
-          email,
+          email: targetEmail,
           password,
         });
 
@@ -178,14 +176,11 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           return;
         }
 
-        // Sync selected role to ensure RBAC accurately reflects choice
-        await syncRoleToBackend(selectedRole);
-
-        setSuccessMsg(t('auth.authenticating', `Access Granted as ${selectedRole}! Initializing Command Portal...`));
+        setSuccessMsg(t('auth.authenticating', `Access Granted! Initializing Command Portal...`));
         setTimeout(() => {
           if (onSuccess) onSuccess();
           else router.push('/admin');
-        }, 600);
+        }, 500);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
@@ -198,10 +193,14 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
     setError(null);
     setOauthLoading(provider);
     try {
-      await authClient.signIn.social({
+      const res = await authClient.signIn.social({
         provider,
         callbackURL: typeof window !== 'undefined' ? `${window.location.origin}/admin` : '/admin',
       });
+      if (res?.error) {
+        setError(res.error.message || `Failed to initiate ${provider} sign-in.`);
+        setOauthLoading(null);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : `Failed to initiate ${provider} sign-in.`);
       setOauthLoading(null);
@@ -233,11 +232,8 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             onClick={() => {
               setMode('signin');
               setError(null);
-              const target = rolesConfig.find((r) => r.id === selectedRole);
-              if (target) {
-                setEmail(target.email);
-                setPassword('Password123!');
-              }
+              setEmail('');
+              setPassword('');
             }}
             className={`py-1.5 text-xs font-semibold rounded-lg transition-all ${
               mode === 'signin'
@@ -276,12 +272,12 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             <Shield className="w-3.5 h-3.5 text-emerald-500" />
             <span>
               {mode === 'signin' 
-                ? t('auth.roleSelectionTitle', 'Login as Role (Security Clearance)')
+                ? t('auth.roleSelectionTitle', 'Select Role Designation')
                 : t('auth.signupRoleTitle', 'Select Official Role Designation')}
             </span>
           </label>
           <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-            {mode === 'signin' ? t('auth.autoFillBadge', '⚡ 1-Click Auto-Fill') : t('auth.assignedClearance', 'Designated Role')}
+            {mode === 'signin' ? 'ℹ️ Credentials Guide' : t('auth.assignedClearance', 'Designated Role')}
           </span>
         </div>
 
@@ -406,16 +402,16 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
-            {t('auth.emailLabel', 'Official Government Email')}
+            Username
           </label>
           <div className="relative">
-            <Mail className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-3" />
+            <User className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-3" />
             <input
-              type="email"
+              type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="officer@infra.gov.in"
+              placeholder="Input username"
               className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-gray-950/70 border border-slate-200 dark:border-gray-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
@@ -423,17 +419,17 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
-            {t('auth.passwordLabel', 'Security Passphrase / Password')}
+            Password
           </label>
           <div className="relative">
             <Lock className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-3" />
             <input
               type="password"
               required
-              minLength={8}
+              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
+              placeholder="Input password"
               className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-gray-950/70 border border-slate-200 dark:border-gray-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
@@ -453,7 +449,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             <>
               <span>
                 {mode === 'signin' 
-                  ? `${t('auth.signInBtn', 'Sign In with Credentials')} (${selectedRole})`
+                  ? `${t('auth.signInBtn', 'Sign In')} (${selectedRole})`
                   : `${t('auth.signUpBtn', 'Register Account')} (${selectedRole})`
                 }
               </span>
@@ -468,7 +464,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
         <div className="relative flex items-center justify-center my-3">
           <div className="border-t border-slate-200 dark:border-gray-800 w-full" />
           <span className="bg-white dark:bg-gray-900 px-3 text-[10px] uppercase tracking-wider text-slate-400 dark:text-gray-500 font-semibold absolute">
-            {t('auth.orSso', 'or single sign-on')}
+            or continue with
           </span>
         </div>
 
@@ -476,11 +472,11 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           <button
             type="button"
             onClick={() => handleSocialSignIn('github')}
-            disabled={oauthLoading !== null}
-            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50"
+            disabled={oauthLoading !== null || loading}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
           >
             {oauthLoading === 'github' ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Github className="w-4 h-4 text-slate-900 dark:text-white" />
             )}
@@ -490,11 +486,11 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           <button
             type="button"
             onClick={() => handleSocialSignIn('google')}
-            disabled={oauthLoading !== null}
-            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50"
+            disabled={oauthLoading !== null || loading}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-gray-950/70 hover:bg-slate-100 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
           >
             {oauthLoading === 'google' ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
