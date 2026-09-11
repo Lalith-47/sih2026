@@ -130,7 +130,7 @@ function UpdateProgressContent() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-gray-700"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>{t('projectUpdate.backToDashboard', 'Return to Admin Dashboard')}</span>
+          <span>{t('projectUpdate.backToDashboard', 'Return to Dashboard')}</span>
         </Link>
       </div>
     );
