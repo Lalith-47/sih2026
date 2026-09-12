@@ -47,14 +47,9 @@ export default function Navbar() {
     }
   }, [session]);
 
-  const getDashboardLabel = () => {
-    if (userRole === 'ADMIN') return t('nav.adminConsole', 'Admin Console');
-    return t('nav.dashboard', 'Dashboard');
-  };
-
   const navLinks = [
     { label: t('nav.home', 'Home'), href: '/', icon: Building2, showAlways: false, requireAuth: true },
-    { label: getDashboardLabel(), href: '/admin', icon: ShieldAlert, showAlways: false, requireAuth: true },
+    { label: t('nav.dashboard', 'Dashboard'), href: '/admin', icon: ShieldAlert, showAlways: false, requireAuth: true },
     { label: t('nav.publicPortal', 'Public Portal'), href: '/projects', icon: BarChart3, showAlways: false, requireAuth: true },
     { 
       label: t('nav.createProject', 'Create Project'), 

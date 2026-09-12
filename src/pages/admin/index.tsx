@@ -265,7 +265,7 @@ function AdminDashboardContent() {
     // Auto-switch tab if specified in URL query
     if (router.query.tab === 'users') {
       setActiveTab('USERS');
-    } else if (router.query.tab === 'projects') {
+    } else {
       setActiveTab('PROJECTS');
     }
 
@@ -393,7 +393,10 @@ function AdminDashboardContent() {
           <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-gray-800/80 pb-3">
             <button
               type="button"
-              onClick={() => setActiveTab('PROJECTS')}
+              onClick={() => {
+                setActiveTab('PROJECTS');
+                router.push('/admin', undefined, { shallow: true });
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${
                 activeTab === 'PROJECTS'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs'
@@ -401,7 +404,7 @@ function AdminDashboardContent() {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Projects Portfolio</span>
+              <span>{t('dashboard.projectsTab', 'Projects Portfolio')}</span>
               <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                 activeTab === 'PROJECTS' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300'
               }`}>
@@ -411,7 +414,10 @@ function AdminDashboardContent() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('USERS')}
+              onClick={() => {
+                setActiveTab('USERS');
+                router.push('/admin?tab=users', undefined, { shallow: true });
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all ${
                 activeTab === 'USERS'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs'
@@ -419,12 +425,7 @@ function AdminDashboardContent() {
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Officer Roster & Access Control</span>
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                activeTab === 'USERS' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300'
-              }`}>
-                Admin Portal
-              </span>
+              <span>{t('nav.manageUsers', 'Manage Users')}</span>
             </button>
           </div>
         )}

@@ -88,6 +88,7 @@
   "dashboard": {
     "title": "National Infrastructure Command Center",
     "subtitle": "Real-time project telemetry, capital expenditure monitoring, and multi-modal progress verification.",
+    "projectsTab": "Projects Portfolio",
     "createProjectBtn": "Create New Project",
     "totalPortfolio": "Total Portfolio",
     "managedAssets": "Managed capital assets",
