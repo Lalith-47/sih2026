@@ -48,7 +48,7 @@ export default function LoginPage() {
       <div className="absolute top-10 left-10 w-[350px] h-[350px] bg-blue-500/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Top Header Bar */}
-      <header className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 flex items-center justify-between">
+      <header className="relative z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-3 group cursor-pointer focus:outline-none">
           <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105">
             <Layers className="w-5 h-5 text-white drop-shadow" />
@@ -80,7 +80,7 @@ export default function LoginPage() {
               }`}
               title="Global Digital Twin Planetary Matrix (Trillion-Dollar Tech)"
             >
-              🌐 Digital Twin
+              {t('auth.digitalTwin', '🌐 Digital Twin')}
             </button>
             <button
               type="button"
@@ -92,7 +92,7 @@ export default function LoginPage() {
               }`}
               title="Industrial Oil Refinery SCADA Complex"
             >
-              🏭 Oil Refinery
+              {t('auth.oilRefinery', '🏭 Oil Refinery')}
             </button>
           </div>
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
       </header>
 
       {/* Main Center Stage with AuthCard */}
-      <main className="relative z-20 flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-10">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-10">
         {/* Subtle Cyber Title Badge */}
         <div className="mb-4 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-medium backdrop-blur-md shadow-sm mb-1.5">

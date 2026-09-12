@@ -58,7 +58,7 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left z-50" ref={dropdownRef}>
       <button
         type="button"
         onClick={(e) => {
@@ -87,8 +87,9 @@ export default function LanguageSwitcher() {
         <div
           role="listbox"
           onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 dark:bg-gray-900/95 border border-slate-200/90 dark:border-gray-800 shadow-xl shadow-slate-900/10 dark:shadow-black/50 p-1.5 z-50 animate-fadeIn backdrop-blur-md"
+          className="absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 dark:bg-gray-900/95 border border-slate-200/90 dark:border-gray-800 shadow-xl shadow-slate-900/10 dark:shadow-black/50 p-1.5 z-[100] animate-fadeIn backdrop-blur-md"
         >
           <div className="px-2.5 py-1.5 mb-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-gray-500 border-b border-slate-100 dark:border-gray-800/80">
             Select Language
@@ -103,6 +104,7 @@ export default function LanguageSwitcher() {
                   role="option"
                   aria-selected={isSelected}
                   onMouseDown={(e) => selectLanguage(item.id, e)}
+                  onTouchStart={(e) => selectLanguage(item.id, e)}
                   onClick={(e) => selectLanguage(item.id, e)}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
                     isSelected

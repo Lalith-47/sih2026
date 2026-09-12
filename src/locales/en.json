@@ -73,7 +73,17 @@
     "corridorDelhiHsr": "Delhi-Varanasi HSR: Phase 2 Active",
     "corridorRewaSolar": "Rewa Solar Complex: Operational",
     "footerNotice": "Smart India Hackathon 2026 • Problem Statement: Infrastructure Sentinel",
-    "confidentialNotice": "Confidential & Protected Official System • Ministry of Infrastructure"
+    "confidentialNotice": "Confidential & Protected Official System • Ministry of Infrastructure",
+    "usernameLabel": "Username / Email",
+    "usernamePlaceholder": "Input username or email...",
+    "passwordPlaceholder": "Input password...",
+    "orContinueWith": "or continue with",
+    "credentialsGuide": "ℹ️ Credentials Guide",
+    "adminRestrictedTitle": "🔒 Director (Admin) Clearance Restricted",
+    "adminRestrictedDesc": "Administrative accounts cannot be self-registered. Only active Directors can provision and assign Admin clearance from the Command Console.",
+    "ssoFooter": "Official Single Sign-On (SSO) for authorized personnel only",
+    "digitalTwin": "🌐 Digital Twin",
+    "oilRefinery": "🏭 Oil Refinery"
   },
   "dashboard": {
     "title": "National Infrastructure Command Center",

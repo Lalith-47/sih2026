@@ -311,7 +311,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             </span>
           </label>
           <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-            {mode === 'signin' ? 'ℹ️ Credentials Guide' : t('auth.assignedClearance', 'Designated Role')}
+            {mode === 'signin' ? t('auth.credentialsGuide', 'ℹ️ Credentials Guide') : t('auth.assignedClearance', 'Designated Role')}
           </span>
         </div>
 
@@ -360,10 +360,10 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             <Lock className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="leading-tight">
               <span className="font-bold block text-[11px] text-amber-900 dark:text-amber-200">
-                🔒 Director (Admin) Clearance Restricted
+                {t('auth.adminRestrictedTitle', '🔒 Director (Admin) Clearance Restricted')}
               </span>
               <span className="text-[10px] text-amber-700 dark:text-amber-400">
-                Administrative accounts cannot be self-registered. Only active Directors can provision and assign Admin clearance from the Command Console.
+                {t('auth.adminRestrictedDesc', 'Administrative accounts cannot be self-registered. Only active Directors can provision and assign Admin clearance from the Command Console.')}
               </span>
             </div>
           </div>
@@ -466,7 +466,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
-            Username
+            {t('auth.usernameLabel', 'Username / Email')}
           </label>
           <div className="relative">
             <User className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-3" />
@@ -475,7 +475,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Input username"
+              placeholder={t('auth.usernamePlaceholder', 'Input username or email...')}
               className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-gray-950/70 border border-slate-200 dark:border-gray-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
@@ -483,7 +483,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">
-            Password
+            {t('auth.passwordLabel', 'Password')}
           </label>
           <div className="relative">
             <Lock className="w-4 h-4 text-slate-400 dark:text-gray-500 absolute left-3.5 top-3" />
@@ -493,7 +493,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Input password"
+              placeholder={t('auth.passwordPlaceholder', 'Input password...')}
               className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-gray-950/70 border border-slate-200 dark:border-gray-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
@@ -528,7 +528,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
         <div className="relative flex items-center justify-center my-3">
           <div className="border-t border-slate-200 dark:border-gray-800 w-full" />
           <span className="bg-white dark:bg-gray-900 px-3 text-[10px] uppercase tracking-wider text-slate-400 dark:text-gray-500 font-semibold absolute">
-            or continue with
+            {t('auth.orContinueWith', 'or continue with')}
           </span>
         </div>
 
