@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   Mic,
   Square,
-  Loader2
+  Loader2,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { useSession } from '@/lib/auth-client';
 
@@ -70,6 +72,124 @@ export default function AIChatbot() {
       return () => clearTimeout(t);
     }
   }, [voiceError, voiceSuccess]);
+
+  // Audio playback state for OpenAI Text-to-Speech (TTS)
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [loadingTtsMessageId, setLoadingTtsMessageId] = useState<string | null>(null);
+  const [autoSpeak, setAutoSpeak] = useState(false);
+  const autoSpeakRef = useRef(autoSpeak);
+  useEffect(() => {
+    autoSpeakRef.current = autoSpeak;
+  }, [autoSpeak]);
+
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsAudioCacheRef = useRef<Map<string, string>>(new Map());
+
+  const stopAudio = () => {
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.currentTime = 0;
+      activeAudioRef.current = null;
+    }
+    setPlayingMessageId(null);
+    setLoadingTtsMessageId(null);
+  };
+
+  const playAudioFromBase64 = (messageId: string, base64: string) => {
+    try {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+      const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+      activeAudioRef.current = audio;
+      setPlayingMessageId(messageId);
+      setLoadingTtsMessageId(null);
+
+      audio.onended = () => {
+        setPlayingMessageId(null);
+        activeAudioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setPlayingMessageId(null);
+        setLoadingTtsMessageId(null);
+        activeAudioRef.current = null;
+      };
+
+      audio.play().catch((err) => {
+        console.warn('Audio play was interrupted or blocked by browser policy:', err);
+        setPlayingMessageId(null);
+        setLoadingTtsMessageId(null);
+        activeAudioRef.current = null;
+      });
+    } catch (err) {
+      console.error('Failed to initialize Audio playback:', err);
+      setPlayingMessageId(null);
+      setLoadingTtsMessageId(null);
+    }
+  };
+
+  const handlePlayTTS = async (messageId: string, text: string) => {
+    // If this message is already playing, clicking stops it
+    if (playingMessageId === messageId) {
+      stopAudio();
+      return;
+    }
+
+    // Stop whatever else is currently speaking
+    stopAudio();
+
+    // Check in-memory cache to avoid duplicate OpenAI API bills/latency
+    const cachedBase64 = ttsAudioCacheRef.current.get(messageId);
+    if (cachedBase64) {
+      playAudioFromBase64(messageId, cachedBase64);
+      return;
+    }
+
+    setLoadingTtsMessageId(messageId);
+
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${apiBase}/api/ai/text-to-speech`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: text.slice(0, 4000),
+          voice: 'nova',
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.message || 'Failed to synthesize speech');
+      }
+
+      const data = await res.json();
+      if (data?.audioBase64) {
+        ttsAudioCacheRef.current.set(messageId, data.audioBase64);
+        playAudioFromBase64(messageId, data.audioBase64);
+      } else {
+        throw new Error('No audio data received from OpenAI TTS');
+      }
+    } catch (err: any) {
+      console.error('Text-to-speech error:', err);
+      setLoadingTtsMessageId(null);
+      setPlayingMessageId(null);
+    }
+  };
+
+  // Stop audio when chat is closed or minimized
+  useEffect(() => {
+    if (!isOpen || isMinimized) {
+      stopAudio();
+    }
+    return () => {
+      stopAudio();
+    };
+  }, [isOpen, isMinimized]);
+
 
   const toggleAudioRecording = async () => {
     if (!isRecordingAudio) {
@@ -273,6 +393,11 @@ export default function AIChatbot() {
       };
 
       setMessages((prev) => [...prev, botMsg]);
+
+      // If Auto-Read Aloud is active, speak the new response immediately
+      if (autoSpeakRef.current && botMsg.text) {
+        handlePlayTTS(botMsg.id, botMsg.text);
+      }
     } catch (err: unknown) {
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
@@ -294,6 +419,7 @@ export default function AIChatbot() {
   };
 
   const clearChat = () => {
+    stopAudio();
     setMessages([
       {
         id: `welcome-${Date.now()}`,
@@ -333,6 +459,22 @@ export default function AIChatbot() {
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const next = !autoSpeak;
+                  setAutoSpeak(next);
+                  if (!next) stopAudio();
+                }}
+                title={autoSpeak ? 'Auto Read Aloud (OpenAI Voice): Active (Click to mute)' : 'Auto Read Aloud (OpenAI Voice): Off (Click to activate)'}
+                className={`px-2 py-1 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-medium ${
+                  autoSpeak
+                    ? 'bg-white text-emerald-700 shadow-xs font-semibold'
+                    : 'text-white/80 hover:text-white hover:bg-white/20'
+                }`}
+              >
+                {autoSpeak ? <Volume2 className="w-3.5 h-3.5 text-emerald-600" /> : <VolumeX className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{autoSpeak ? 'TTS On' : 'TTS Off'}</span>
+              </button>
               <button
                 onClick={clearChat}
                 title="Clear conversation"
@@ -426,6 +568,46 @@ export default function AIChatbot() {
                           <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                             {msg.source.includes('openai') ? 'OpenAI GPT-4o' : 'Live DB'}
                           </span>
+                        </>
+                      )}
+                      {msg.sender === 'assistant' && (
+                        <>
+                          <span>•</span>
+                          <button
+                            onClick={() => handlePlayTTS(msg.id, msg.text)}
+                            disabled={loadingTtsMessageId === msg.id}
+                            title={
+                              playingMessageId === msg.id
+                                ? 'Stop reading'
+                                : loadingTtsMessageId === msg.id
+                                ? 'Synthesizing voice with OpenAI...'
+                                : 'Read aloud with OpenAI Voice'
+                            }
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-all ${
+                              playingMessageId === msg.id
+                                ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 animate-pulse ring-1 ring-rose-400/50'
+                                : loadingTtsMessageId === msg.id
+                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                                : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
+                            }`}
+                          >
+                            {loadingTtsMessageId === msg.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin text-emerald-600 dark:text-emerald-400" />
+                                <span>Voicing...</span>
+                              </>
+                            ) : playingMessageId === msg.id ? (
+                              <>
+                                <Square className="w-2.5 h-2.5 fill-current text-rose-600 dark:text-rose-400" />
+                                <span>Stop</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3" />
+                                <span>Read Aloud</span>
+                              </>
+                            )}
+                          </button>
                         </>
                       )}
                     </div>
