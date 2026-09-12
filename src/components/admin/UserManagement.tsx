@@ -18,7 +18,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
-import { getApiBaseUrl } from '@/lib/auth-client';
+import { getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 
 export interface ManagedUser {
   id: string;
@@ -50,7 +50,7 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/admin/users`, { credentials: 'include' });
+      const res = await apiFetch(`${apiBase}/api/admin/users`);
       if (res.ok) {
         const data = await res.json();
         if (data.users && Array.isArray(data.users)) {
@@ -75,10 +75,9 @@ export default function UserManagement() {
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/admin/users`, {
+      const res = await apiFetch(`${apiBase}/api/admin/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           name: newName,
           email: newEmail,
@@ -112,10 +111,9 @@ export default function UserManagement() {
   const handleRoleChange = async (userId: string, targetRole: 'ADMIN' | 'SUPERVISOR' | 'VIEWER') => {
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/admin/users/${userId}/role`, {
+      const res = await apiFetch(`${apiBase}/api/admin/users/${userId}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ role: targetRole }),
       });
 
@@ -139,9 +137,8 @@ export default function UserManagement() {
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`${apiBase}/api/admin/users/${userId}`, {
         method: 'DELETE',
-        credentials: 'include',
       });
 
       const data = await res.json();

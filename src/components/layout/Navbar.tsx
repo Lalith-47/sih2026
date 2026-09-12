@@ -15,7 +15,7 @@ import {
   Shield,
   Users
 } from 'lucide-react';
-import { useSession, signOut } from '@/lib/auth-client';
+import { useSession, signOut, getApiBaseUrl, apiFetch, getStoredToken } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 import ThemeToggle from '@/components/layout/ThemeToggle';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
@@ -28,9 +28,10 @@ export default function Navbar() {
   const [userRole, setUserRole] = useState<'ADMIN' | 'SUPERVISOR' | 'VIEWER' | null>(null);
 
   useEffect(() => {
-    if (session?.user) {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      fetch(`${apiBase}/api/me`, { credentials: 'include' })
+    const token = getStoredToken();
+    if (session?.user || token) {
+      const apiBase = getApiBaseUrl();
+      apiFetch(`${apiBase}/api/me`)
         .then(async (res) => {
           if (res.ok) {
             const data = await res.json();

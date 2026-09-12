@@ -22,7 +22,7 @@ import {
   Check,
   X
 } from 'lucide-react';
-import { useSession, getApiBaseUrl } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 
 interface VisionAssessmentResult {
@@ -313,10 +313,9 @@ export default function ProgressUploader({
               try {
                 const base64Data = (reader.result as string).split(',')[1];
                 const apiBase = getApiBaseUrl();
-                const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
+                const res = await apiFetch(`${apiBase}/api/ai/audio-transcribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
                   body: JSON.stringify({
                     audioBase64: base64Data,
                     audioMime: audioBlob.type || 'audio/webm',
@@ -418,10 +417,9 @@ export default function ProgressUploader({
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/ai/vision-estimate`, {
+      const res = await apiFetch(`${apiBase}/api/ai/vision-estimate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           imageBase64: visionImageBase64,
           projectId,
@@ -528,10 +526,9 @@ export default function ProgressUploader({
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/projects/${projectId}/updates`, {
+      const res = await apiFetch(`${apiBase}/api/projects/${projectId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           channel: backendChannel,
           notes,

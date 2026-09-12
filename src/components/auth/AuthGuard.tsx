@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useSession } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl, apiFetch, getStoredToken, clearStoredToken } from '@/lib/auth-client';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 
@@ -25,60 +25,71 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    // 1. If auth check is complete and no session exists, redirect immediately to /login
-    if (!isPending && !session?.user) {
+    // If session is still loading and no stored token exists, wait
+    if (isPending) return;
+
+    const token = getStoredToken();
+
+    // 1. If auth check is complete and neither session nor stored token exists, redirect immediately to /login
+    if (!session?.user && !token) {
       router.replace('/login');
       return;
     }
 
-    // 2. If session exists, fetch full officer profile from backend (/api/me) to verify live role
-    if (!isPending && session?.user) {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      fetch(`${apiBase}/api/me`, { credentials: 'include' })
-        .then(async (res) => {
-          if (res.status === 401) {
-            // Session expired
-            router.replace('/login');
-            return;
-          }
-          if (res.ok) {
-            const data = await res.json();
-            const officerRole = data.user?.role || 'SUPERVISOR';
-            const userProfile: OfficerProfile = {
-              id: data.user.id,
-              name: data.user.name || session.user.name || session.user.email,
-              email: data.user.email,
-              role: officerRole,
-            };
-            setProfile(userProfile);
+    // 2. Fetch full officer profile from backend (/api/me) to verify live session and role
+    const apiBase = getApiBaseUrl();
+    apiFetch(`${apiBase}/api/me`)
+      .then(async (res) => {
+        if (res.status === 401) {
+          clearStoredToken();
+          router.replace('/login');
+          return;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          const officerRole = data.user?.role || 'SUPERVISOR';
+          const userProfile: OfficerProfile = {
+            id: data.user.id,
+            name: data.user.name || session?.user?.name || data.user.email,
+            email: data.user.email,
+            role: officerRole,
+          };
+          setProfile(userProfile);
 
-            if (allowedRoles && !allowedRoles.includes(officerRole)) {
-              setAccessDenied(true);
-            } else {
-              setAccessDenied(false);
-            }
+          if (allowedRoles && !allowedRoles.includes(officerRole)) {
+            setAccessDenied(true);
           } else {
-            // Fallback to session user with default supervisor role
-            setProfile({
-              id: session.user.id,
-              name: session.user.name || session.user.email,
-              email: session.user.email,
-              role: 'SUPERVISOR',
-            });
+            setAccessDenied(false);
           }
-        })
-        .catch(() => {
+        } else if (session?.user) {
+          // Fallback to session user with default supervisor role
           setProfile({
             id: session.user.id,
             name: session.user.name || session.user.email,
             email: session.user.email,
             role: 'SUPERVISOR',
           });
-        })
-        .finally(() => {
-          setCheckingRole(false);
-        });
-    }
+        } else {
+          clearStoredToken();
+          router.replace('/login');
+        }
+      })
+      .catch(() => {
+        if (session?.user) {
+          setProfile({
+            id: session.user.id,
+            name: session.user.name || session.user.email,
+            email: session.user.email,
+            role: 'SUPERVISOR',
+          });
+        } else {
+          clearStoredToken();
+          router.replace('/login');
+        }
+      })
+      .finally(() => {
+        setCheckingRole(false);
+      });
   }, [isPending, session, router, allowedRoles]);
 
   // If session is pending or role check is in flight, display secure gate loader

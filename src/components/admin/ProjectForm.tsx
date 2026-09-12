@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { ProjectStatus } from '@/types/project';
-import { useSession } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 import { 
   Building2, 
@@ -75,7 +75,7 @@ export default function ProjectForm() {
     const supervisorVal = formData.supervisor || session?.user?.name || 'Field Executive Engineer';
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const payload = {
         name: formData.name.trim(),
         code: formData.wbsCode.trim(),
@@ -95,10 +95,9 @@ export default function ProjectForm() {
         description: formData.description.trim() || 'Infrastructure development project with multi-phase execution.',
       };
 
-      const res = await fetch(`${apiBase}/api/projects`, {
+      const res = await apiFetch(`${apiBase}/api/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(payload),
       });
 

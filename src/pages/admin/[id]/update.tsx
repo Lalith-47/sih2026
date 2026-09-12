@@ -20,6 +20,7 @@ import ProgressUploader from '@/components/admin/ProgressUploader';
 import { Project } from '@/types/project';
 import { useI18n } from '@/lib/i18n-context';
 import AuthGuard from '@/components/auth/AuthGuard';
+import { getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 
 export default function UpdateProgressPage() {
   return (
@@ -38,14 +39,14 @@ function UpdateProgressContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const apiBase = getApiBaseUrl();
 
   const fetchProjectDetails = useCallback(async () => {
     if (!id || typeof id !== 'string') return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/projects/${id}`, { credentials: 'include' });
+      const res = await apiFetch(`${apiBase}/api/projects/${id}`);
       if (res.status === 401) {
         router.replace('/login');
         return;

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { Project, ProjectStatus } from '@/types/project';
 import { getStatusBadge } from '@/components/public/ProjectCard';
-import { useSession, getApiBaseUrl } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 import AuthGuard from '@/components/auth/AuthGuard';
 import UserManagement from '@/components/admin/UserManagement';
@@ -107,7 +107,7 @@ function AdminDashboardContent() {
     setFetchError(null);
     try {
       // Check session status & officer profile
-      const meRes = await fetch(`${apiBase}/api/me`, { credentials: 'include' });
+      const meRes = await apiFetch(`${apiBase}/api/me`);
       if (meRes.status === 401) {
         router.replace('/login');
         return;
@@ -120,7 +120,7 @@ function AdminDashboardContent() {
       }
 
       // Fetch live aggregated stats from PostgreSQL
-      const statsRes = await fetch(`${apiBase}/api/dashboard/stats`, { credentials: 'include' });
+      const statsRes = await apiFetch(`${apiBase}/api/dashboard/stats`);
       if (statsRes.status === 401) {
         router.replace('/login');
         return;
@@ -131,7 +131,7 @@ function AdminDashboardContent() {
       }
 
       // Fetch live projects from PostgreSQL (scoped by role on backend)
-      const projRes = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+      const projRes = await apiFetch(`${apiBase}/api/projects`);
       if (projRes.status === 401) {
         router.replace('/login');
         return;
@@ -210,10 +210,9 @@ function AdminDashboardContent() {
     setSavingEdit(true);
     setEditError(null);
     try {
-      const res = await fetch(`${apiBase}/api/projects/${editingProject.id}`, {
+      const res = await apiFetch(`${apiBase}/api/projects/${editingProject.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(editForm),
       });
       const data = await res.json();
@@ -241,9 +240,8 @@ function AdminDashboardContent() {
     }
     setDeletingId(p.id);
     try {
-      const res = await fetch(`${apiBase}/api/projects/${p.id}`, {
+      const res = await apiFetch(`${apiBase}/api/projects/${p.id}`, {
         method: 'DELETE',
-        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) {

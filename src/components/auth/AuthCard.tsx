@@ -17,7 +17,7 @@ import {
   Sparkles,
   X
 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { authClient, setStoredToken, getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'VIEWER';
@@ -129,11 +129,10 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
 
   const syncRoleToBackend = async (role: UserRole) => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      await fetch(`${apiBase}/api/me/role`, {
+      const apiBase = getApiBaseUrl();
+      await apiFetch(`${apiBase}/api/me/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ role }),
       });
     } catch {
@@ -155,7 +154,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             return;
           }
 
-          const { error: signUpError } = await authClient.signUp.email({
+          const { data: signUpData, error: signUpError } = await authClient.signUp.email({
             email,
             password,
             name: name.trim() || email.split('@')[0],
@@ -165,6 +164,10 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
             setError(signUpError.message || 'Failed to create account. Please check credentials.');
             setLoading(false);
             return;
+          }
+
+          if (signUpData?.token) {
+            setStoredToken(signUpData.token);
           }
 
           // Apply chosen role to new user record
@@ -180,7 +183,7 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           ? email.trim()
           : `${email.trim().toLowerCase()}@infra.gov.in`;
 
-        const { error: signInError } = await authClient.signIn.email({
+        const { data: signInData, error: signInError } = await authClient.signIn.email({
           email: targetEmail,
           password,
         });
@@ -189,6 +192,10 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
           setError(signInError.message || 'Invalid email or password.');
           setLoading(false);
           return;
+        }
+
+        if (signInData?.token) {
+          setStoredToken(signInData.token);
         }
 
         setSuccessMsg(t('auth.authenticating', `Access Granted! Initializing Command Portal...`));

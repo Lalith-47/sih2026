@@ -36,6 +36,7 @@ import CompletionPieChart from '@/components/charts/CompletionPieChart';
 import BudgetBarChart from '@/components/charts/BudgetBarChart';
 import { getStatusBadge } from '@/components/public/ProjectCard';
 import AuthGuard from '@/components/auth/AuthGuard';
+import { getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 
 export default function ProjectDetailsPage() {
@@ -64,9 +65,9 @@ function ProjectDetailsContent() {
   const visionFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const apiBase = getApiBaseUrl();
 
-    fetch(`${apiBase}/api/me`, { credentials: 'include' })
+    apiFetch(`${apiBase}/api/me`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user?.role) setUserRole(data.user.role);
@@ -74,7 +75,7 @@ function ProjectDetailsContent() {
       .catch(() => {});
 
     if (id && typeof id === 'string') {
-      fetch(`${apiBase}/api/projects/${id}`, { credentials: 'include' })
+      apiFetch(`${apiBase}/api/projects/${id}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.project) {
@@ -185,11 +186,10 @@ function ProjectDetailsContent() {
     setVisionError(null);
     setVisionResult(null);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const res = await fetch(`${apiBase}/api/ai/vision-estimate`, {
+      const apiBase = getApiBaseUrl();
+      const res = await apiFetch(`${apiBase}/api/ai/vision-estimate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           projectId: project.id,
           imageBase64: visionImage,

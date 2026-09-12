@@ -7,6 +7,7 @@ import { Project } from '@/types/project';
 import { BarChart3, Layers, Compass, CheckCircle2, RotateCcw, FolderOpen, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { useI18n } from '@/lib/i18n-context';
+import { getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 
 export default function ProjectsIndexPage() {
   return (
@@ -27,8 +28,8 @@ function ProjectsIndexContent() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-        const res = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+        const apiBase = getApiBaseUrl();
+        const res = await apiFetch(`${apiBase}/api/projects`);
         if (res.ok) {
           const data = await res.json();
           if (data.projects && Array.isArray(data.projects)) {

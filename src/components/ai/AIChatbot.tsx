@@ -25,7 +25,7 @@ import {
   Check,
   ChevronDown
 } from 'lucide-react';
-import { useSession, getApiBaseUrl } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl, apiFetch } from '@/lib/auth-client';
 import { Project } from '@/types/project';
 
 interface UpdateProposal {
@@ -76,7 +76,7 @@ export default function AIChatbot() {
     const fetchProjects = async () => {
       try {
         const apiBase = getApiBaseUrl();
-        const res = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+        const res = await apiFetch(`${apiBase}/api/projects`);
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -195,10 +195,9 @@ export default function AIChatbot() {
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/ai/text-to-speech`, {
+      const res = await apiFetch(`${apiBase}/api/ai/text-to-speech`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           text: text.slice(0, 4000),
           voice: 'nova',
@@ -270,10 +269,9 @@ export default function AIChatbot() {
                 if (!base64Data) throw new Error('Failed to encode audio data.');
 
                 const apiBase = getApiBaseUrl();
-                const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
+                const res = await apiFetch(`${apiBase}/api/ai/audio-transcribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
                   body: JSON.stringify({
                     audioBase64: base64Data,
                     audioMime: audioBlob.type || 'audio/webm',
@@ -397,10 +395,9 @@ export default function AIChatbot() {
     setCommittingUpdateId(messageId);
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/projects/${proposal.projectId}/updates`, {
+      const res = await apiFetch(`${apiBase}/api/projects/${proposal.projectId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           channel: 'TEXT',
           notes: proposal.suggestedNotes,
@@ -454,10 +451,9 @@ export default function AIChatbot() {
 
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/ai/chat`, {
+      const res = await apiFetch(`${apiBase}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           message: textToSend.trim(),
           projectId: linkedProjectId || undefined,
