@@ -14,7 +14,10 @@ import {
   Camera,
   Layers,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Mic,
+  Square,
+  Loader2
 } from 'lucide-react';
 import { useSession } from '@/lib/auth-client';
 
@@ -48,6 +51,121 @@ export default function AIChatbot() {
   const [attachedImageName, setAttachedImageName] = useState<string | null>(null);
   const [attachedImageSize, setAttachedImageSize] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Audio recording state for Whisper speech-to-text
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [transcribingAudio, setTranscribingAudio] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceSuccess, setVoiceSuccess] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // Auto-clear voice feedback banners after 4s
+  useEffect(() => {
+    if (voiceError || voiceSuccess) {
+      const t = setTimeout(() => {
+        setVoiceError(null);
+        setVoiceSuccess(false);
+      }, 4000);
+      return () => clearTimeout(t);
+    }
+  }, [voiceError, voiceSuccess]);
+
+  const toggleAudioRecording = async () => {
+    if (!isRecordingAudio) {
+      setVoiceError(null);
+      setVoiceSuccess(false);
+      try {
+        if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setVoiceError('Microphone access is not supported in this browser.');
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: recorder.mimeType || 'audio/webm',
+          });
+          stream.getTracks().forEach((track) => track.stop());
+
+          setTranscribingAudio(true);
+          try {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              try {
+                const base64Data = (reader.result as string).split(',')[1];
+                if (!base64Data) throw new Error('Failed to encode audio data.');
+
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    audioBase64: base64Data,
+                    audioMime: audioBlob.type || 'audio/webm',
+                  }),
+                });
+
+                if (!res.ok) {
+                  const errJson = await res.json().catch(() => ({}));
+                  const errMsg = errJson.error || `Server error (${res.status})`;
+                  throw new Error(errMsg);
+                }
+
+                const data = await res.json();
+                if (data.text && data.text.trim()) {
+                  setInputMessage((prev) => (prev ? `${prev} ${data.text.trim()}` : data.text.trim()));
+                  setVoiceSuccess(true);
+                } else {
+                  setVoiceError('No speech detected. Please try again in a quieter environment.');
+                }
+              } catch (innerErr: any) {
+                const msg = innerErr?.message || 'Transcription failed';
+                setVoiceError(
+                  msg.includes('OpenAI')
+                    ? 'OpenAI Whisper unavailable. Check backend OPENAI_API_KEY.'
+                    : msg.includes('network') || msg.includes('fetch')
+                    ? 'Cannot reach backend. Ensure the server is running on port 4000.'
+                    : `Voice error: ${msg}`
+                );
+              } finally {
+                setTranscribingAudio(false);
+              }
+            };
+            reader.readAsDataURL(audioBlob);
+          } catch (err: any) {
+            setVoiceError(`Recording error: ${err?.message || 'Unknown error'}`);
+            setTranscribingAudio(false);
+          }
+        };
+
+        recorder.start();
+        setIsRecordingAudio(true);
+      } catch (err: any) {
+        const msg = err?.message || '';
+        setVoiceError(
+          msg.includes('denied') || msg.includes('NotAllowed')
+            ? 'Microphone permission denied. Allow microphone access in browser settings.'
+            : `Microphone error: ${msg}`
+        );
+      }
+    } else {
+      setIsRecordingAudio(false);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    }
+  };
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -374,6 +492,29 @@ export default function AIChatbot() {
                 </div>
               )}
 
+              {/* Voice Error / Success Feedback Banner */}
+              {voiceError && (
+                <div className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/40 border-t border-rose-200 dark:border-rose-800/50 flex items-center gap-2 flex-shrink-0">
+                  <span className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold flex-1">
+                    🎙️ {voiceError}
+                  </span>
+                  <button
+                    onClick={() => setVoiceError(null)}
+                    className="p-0.5 rounded text-rose-400 hover:text-rose-600 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {voiceSuccess && (
+                <div className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border-t border-emerald-200 dark:border-emerald-800/50 flex items-center gap-2 flex-shrink-0">
+                  <span className="text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
+                    ✅ Voice transcribed — ready to send!
+                  </span>
+                </div>
+              )}
+
               {/* Input Area */}
               <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-shrink-0">
                 {/* Hidden File Input for Image Upload */}
@@ -389,7 +530,7 @@ export default function AIChatbot() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
+                  disabled={loading || isRecordingAudio}
                   title="Attach site photo for AI Vision analysis"
                   className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
                     attachedImage
@@ -398,6 +539,29 @@ export default function AIChatbot() {
                   }`}
                 >
                   <Camera className="w-4 h-4" />
+                </button>
+
+                {/* Voice Input Button (OpenAI Whisper) */}
+                <button
+                  type="button"
+                  onClick={toggleAudioRecording}
+                  disabled={loading}
+                  title={isRecordingAudio ? "Stop recording and transcribe with Whisper" : "Record voice query (OpenAI Whisper)"}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+                    isRecordingAudio
+                      ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-500/50'
+                      : transcribingAudio
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {transcribingAudio ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-600 dark:text-purple-400" />
+                  ) : isRecordingAudio ? (
+                    <Square className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
                 </button>
 
                 <input

@@ -77,13 +77,17 @@ export default function ProgressUploader({
   const [textDelta, setTextDelta] = useState(0.8);
   const [selectedTags, setSelectedTags] = useState<string[]>(['#DailyProgress']);
 
-  // 3. Voice tab state
+  // 3. Voice tab state (Real OpenAI Whisper Integration)
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [recordedAudioReady, setRecordedAudioReady] = useState(false);
+  const [transcribingAudio, setTranscribingAudio] = useState(false);
+  const [audioPlaybackUrl, setAudioPlaybackUrl] = useState<string | null>(null);
   const [voiceTranscription, setVoiceTranscription] = useState('');
   const [voiceDelta, setVoiceDelta] = useState(1.2);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // 4. AI Vision tab state
   const [visionImageBase64, setVisionImageBase64] = useState<string | null>(null);
@@ -121,23 +125,87 @@ export default function ProgressUploader({
     };
   }, [isRecording]);
 
-  const toggleVoiceRecording = () => {
+  const toggleVoiceRecording = async () => {
     if (!isRecording) {
-      setIsRecording(true);
-      setRecordSeconds(0);
-      setRecordedAudioReady(false);
-      setVoiceTranscription('');
-      setErrorMessage('');
+      try {
+        if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setErrorMessage('Audio recording is not supported in this browser environment.');
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: recorder.mimeType || 'audio/webm',
+          });
+          const playUrl = URL.createObjectURL(audioBlob);
+          setAudioPlaybackUrl(playUrl);
+
+          // Stop all mic tracks
+          stream.getTracks().forEach((track) => track.stop());
+
+          // Convert blob to base64 and send to OpenAI Whisper
+          setTranscribingAudio(true);
+          setRecordedAudioReady(true);
+          try {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              try {
+                const base64Data = (reader.result as string).split(',')[1];
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    audioBase64: base64Data,
+                    audioMime: audioBlob.type || 'audio/webm',
+                  }),
+                });
+
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  throw new Error(err.error || 'Whisper transcription failed');
+                }
+
+                const data = await res.json();
+                setVoiceTranscription(data.text || 'No speech detected in audio recording.');
+              } catch (innerErr: any) {
+                setErrorMessage(`Whisper transcription error: ${innerErr.message}`);
+              } finally {
+                setTranscribingAudio(false);
+              }
+            };
+            reader.readAsDataURL(audioBlob);
+          } catch (err: any) {
+            setErrorMessage(`Transcription failed: ${err.message}`);
+            setTranscribingAudio(false);
+          }
+        };
+
+        recorder.start();
+        setIsRecording(true);
+        setRecordSeconds(0);
+        setRecordedAudioReady(false);
+        setVoiceTranscription('');
+        setErrorMessage('');
+      } catch (micErr: any) {
+        setErrorMessage(`Microphone access error: ${micErr.message}. Please allow microphone permissions.`);
+      }
     } else {
       setIsRecording(false);
-      setRecordedAudioReady(true);
-      const simulatedNotes = [
-        'Transcribed Voice Memo: Pier segment 14 casting finished at 16:30. Curing compounds applied. Steel reinforcement inspections approved for Pier 15.',
-        'Transcribed Voice Memo: High-density asphalt compaction test yielded 98.4% Proctor density. Section 3B open for lane striping.',
-        'Transcribed Voice Memo: 45 precast girder blocks transported to site storage yard. Hydraulic cranes setup for tomorrow morning erection schedule.',
-      ];
-      const randomNote = simulatedNotes[Math.floor(Math.random() * simulatedNotes.length)];
-      setVoiceTranscription(randomNote);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     }
   };
 
@@ -682,22 +750,38 @@ export default function ProgressUploader({
           </div>
 
           {recordedAudioReady && (
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 space-y-2.5">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" />
                   {t('projectUpdate.voiceOutputTitle', 'AI Voice Transcription Output')}
                 </span>
-                <span className="text-[11px] font-mono text-slate-500 dark:text-gray-400">
-                  {t('projectUpdate.whisperEngine', 'Whisper-v3 Engine')}
+                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  OpenAI Whisper-1
                 </span>
               </div>
-              <textarea
-                rows={3}
-                value={voiceTranscription}
-                onChange={(e) => setVoiceTranscription(e.target.value)}
-                className="w-full bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 rounded-lg p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-              />
+
+              {audioPlaybackUrl && (
+                <div className="py-1">
+                  <audio controls src={audioPlaybackUrl} className="w-full h-9 rounded-lg" />
+                </div>
+              )}
+
+              {transcribingAudio ? (
+                <div className="flex items-center justify-center gap-2.5 py-6 text-purple-600 dark:text-purple-400 font-mono text-xs font-semibold">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Transcribing speech with OpenAI Whisper API...</span>
+                </div>
+              ) : (
+                <textarea
+                  rows={3}
+                  value={voiceTranscription}
+                  onChange={(e) => setVoiceTranscription(e.target.value)}
+                  placeholder="Transcribed voice memo will appear here..."
+                  className="w-full bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 rounded-lg p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+              )}
+
               <div className="flex items-center justify-between text-xs text-slate-500 dark:text-gray-400 pt-1">
                 <span>Associated Progress Delta:</span>
                 <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{voiceDelta}%</span>

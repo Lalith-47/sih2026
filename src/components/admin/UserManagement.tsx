@@ -316,7 +316,7 @@ export default function UserManagement() {
                 </tr>
               ) : (
                 filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-750 transition-colors">
+                  <tr key={u.id} className="hover:bg-slate-100/70 dark:hover:bg-gray-750/80 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center font-bold text-slate-700 dark:text-gray-300 text-xs">

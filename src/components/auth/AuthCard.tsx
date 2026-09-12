@@ -211,11 +211,18 @@ export default function AuthCard({ initialMode = 'signin', onSuccess }: AuthCard
     setError(null);
     setOauthLoading(provider);
     try {
+      const callbackURL = typeof window !== 'undefined' ? `${window.location.origin}/admin` : '/admin';
+      const errorCallbackURL = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login';
       const res = await authClient.signIn.social({
         provider,
-        callbackURL: typeof window !== 'undefined' ? `${window.location.origin}/admin` : '/admin',
-        errorCallbackURL: typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login',
+        callbackURL,
+        newUserCallbackURL: callbackURL,
+        errorCallbackURL,
       });
+      if (res?.data?.url) {
+        window.location.href = res.data.url;
+        return;
+      }
       if (res?.error) {
         const msg = res.error.message;
         const providerName = provider === 'google' ? 'Google' : 'Microsoft';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -21,11 +21,19 @@ import {
   Activity, 
   UserCheck, 
   HardHat,
-  Flag
+  Flag,
+  Camera,
+  Upload,
+  Loader2,
+  X,
+  Brain,
+  Sparkles,
+  BarChart3
 } from 'lucide-react';
 import { Project } from '@/types/project';
 import ProgressLineChart from '@/components/charts/ProgressLineChart';
 import CompletionPieChart from '@/components/charts/CompletionPieChart';
+import BudgetBarChart from '@/components/charts/BudgetBarChart';
 import { getStatusBadge } from '@/components/public/ProjectCard';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { useI18n } from '@/lib/i18n-context';
@@ -45,6 +53,15 @@ function ProjectDetailsContent() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'ADMIN' | 'SUPERVISOR' | 'VIEWER'>('SUPERVISOR');
+
+  // AI Site Inspection state
+  const [visionImage, setVisionImage] = useState<string | null>(null);
+  const [visionImageName, setVisionImageName] = useState<string | null>(null);
+  const [visionNotes, setVisionNotes] = useState('');
+  const [visionLoading, setVisionLoading] = useState(false);
+  const [visionResult, setVisionResult] = useState<any | null>(null);
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const visionFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -141,6 +158,55 @@ function ProjectDetailsContent() {
   const statusInfo = getStatusBadge(project.status);
   const StatusIcon = statusInfo.icon;
   const variance = Math.round((project.currentProgress - project.plannedProgress) * 10) / 10;
+
+  // AI Vision: handle image selection
+  const handleVisionImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setVisionError('Please upload an image file (PNG, JPG, JPEG, WEBP).');
+      return;
+    }
+    setVisionImageName(file.name);
+    setVisionResult(null);
+    setVisionError(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') setVisionImage(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // AI Vision: run GPT-4o analysis
+  const runVisionAnalysis = async () => {
+    if (!visionImage || !project) return;
+    setVisionLoading(true);
+    setVisionError(null);
+    setVisionResult(null);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${apiBase}/api/ai/vision-estimate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          projectId: project.id,
+          imageBase64: visionImage,
+          imageMime: 'image/jpeg',
+          customNotes: visionNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI vision analysis failed');
+      setVisionResult(data.result);
+    } catch (err: any) {
+      setVisionError(err?.message || 'Failed to analyze image. Ensure backend is running.');
+    } finally {
+      setVisionLoading(false);
+    }
+  };
+
 
   return (
     <>
@@ -293,7 +359,16 @@ function ProjectDetailsContent() {
 
         {/* Dynamic Visualizations: S-Curve Progress Line Chart & Radial Progress */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-8 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-3xl p-6 shadow-xl transition-colors">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Progress S-Curve</h3>
+                <p className="text-[11px] text-slate-400 dark:text-gray-500">Actual vs Planned baseline over project timeline</p>
+              </div>
+            </div>
             <ProgressLineChart
               timelineData={project.timelineData}
               currentProgress={project.currentProgress}
@@ -301,12 +376,42 @@ function ProjectDetailsContent() {
             />
           </div>
 
-          <div className="lg:col-span-4">
-            <CompletionPieChart
-              currentProgress={project.currentProgress}
-              plannedProgress={project.plannedProgress}
-            />
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-3xl p-5 shadow-xl transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400">
+                  <BarChart3 className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Completion Status</h3>
+                  <p className="text-[11px] text-slate-400 dark:text-gray-500">Physical work done vs remaining</p>
+                </div>
+              </div>
+              <CompletionPieChart
+                currentProgress={project.currentProgress}
+                plannedProgress={project.plannedProgress}
+              />
+            </div>
           </div>
+        </div>
+
+        {/* Budget Utilization Chart */}
+        <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-3xl p-6 sm:p-8 shadow-xl transition-colors">
+          <div className="flex items-center gap-2.5 mb-5 border-b border-slate-200 dark:border-gray-700 pb-4">
+            <span className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400">
+              <IndianRupee className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Capital Budget Utilization</h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400">Allocated vs actual expenditure as of current reporting period</p>
+            </div>
+          </div>
+          <BudgetBarChart
+            budget={project.budget}
+            spent={project.spent}
+            projectName={project.name}
+            height={160}
+          />
         </div>
 
         {/* Live Multi-Modal Field Audit Stream */}
@@ -391,6 +496,201 @@ function ProjectDetailsContent() {
             )}
           </div>
         </div>
+
+        {/* AI Site Inspection Panel — Supervisor & Admin only */}
+        {(userRole === 'ADMIN' || userRole === 'SUPERVISOR') && (
+          <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-950 border border-emerald-800/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800/30 pb-5">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400">
+                  <Brain className="w-6 h-6" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">AI Site Inspection</h3>
+                    <span className="flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      GPT-4o Vision
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Upload a site photo to get an AI-powered structural assessment with confidence scoring against live DB telemetry.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Upload Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <input
+                  ref={visionFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleVisionImageChange}
+                  className="hidden"
+                  id="vision-upload"
+                />
+
+                {visionImage ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-700/50 bg-black/30 group">
+                    <img
+                      src={visionImage}
+                      alt="Site inspection photo"
+                      className="w-full max-h-56 object-cover object-center"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 px-3 py-2 flex items-center justify-between">
+                      <span className="text-xs text-emerald-300 font-mono truncate">📸 {visionImageName}</span>
+                      <button
+                        onClick={() => { setVisionImage(null); setVisionImageName(null); setVisionResult(null); setVisionError(null); }}
+                        className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => visionFileRef.current?.click()}
+                    className="w-full h-40 rounded-2xl border-2 border-dashed border-emerald-700/50 hover:border-emerald-500/60 bg-emerald-950/20 hover:bg-emerald-950/40 flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-emerald-400 transition-all group"
+                  >
+                    <Camera className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                    <div className="text-center">
+                      <p className="text-xs font-semibold">Upload Site / Drone Photo</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">PNG, JPG, WEBP supported</p>
+                    </div>
+                  </button>
+                )}
+
+                {/* Optional supervisor notes */}
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                    Supervisor Field Notes (Optional)
+                  </label>
+                  <textarea
+                    value={visionNotes}
+                    onChange={(e) => setVisionNotes(e.target.value)}
+                    placeholder="e.g. Pile cap concrete pour complete on axis B4-B6, reinforcement cage placed..."
+                    rows={3}
+                    className="w-full bg-slate-800/60 border border-slate-700/60 focus:border-emerald-500/60 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-colors resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={runVisionAnalysis}
+                  disabled={!visionImage || visionLoading}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition-all"
+                >
+                  {visionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      GPT-4o Vision Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Analyze with AI Vision
+                    </>
+                  )}
+                </button>
+
+                {visionError && (
+                  <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/50 text-xs text-rose-300">
+                    ⚠️ {visionError}
+                  </div>
+                )}
+              </div>
+
+              {/* Results Panel */}
+              <div className="space-y-3">
+                {visionLoading && (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 py-12 text-slate-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                    <p className="text-xs font-medium">OpenAI GPT-4o inspecting site photo…</p>
+                    <p className="text-[11px] text-slate-500">Cross-referencing with live project telemetry</p>
+                  </div>
+                )}
+
+                {!visionLoading && !visionResult && !visionError && (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 py-12 text-slate-500 border border-dashed border-slate-700/40 rounded-2xl">
+                    <Brain className="w-8 h-8 text-slate-600" />
+                    <p className="text-xs text-center">Upload a site photo and click<br /><strong className="text-slate-400">Analyze with AI Vision</strong> to get results</p>
+                  </div>
+                )}
+
+                {visionResult && (
+                  <div className="space-y-3 text-xs">
+                    {/* Confidence Score Banner */}
+                    <div className="p-4 rounded-2xl bg-emerald-950/50 border border-emerald-700/40">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-emerald-400 font-bold text-sm">🎯 AI Confidence Score</span>
+                        <span className="text-2xl font-mono font-extrabold text-emerald-400">{visionResult.confidenceScore}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-700"
+                          style={{ width: `${visionResult.confidenceScore}%` }}
+                        />
+                      </div>
+                      <p className="text-emerald-300/70 text-[11px] mt-1.5 font-medium">{visionResult.summary}</p>
+                    </div>
+
+                    {/* Progress metrics */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-center">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Est. Progress</span>
+                        <span className="text-lg font-mono font-extrabold text-white mt-0.5 block">{visionResult.currentProgressEstimate}%</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-center">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Progress Delta</span>
+                        <span className="text-lg font-mono font-extrabold text-emerald-400 mt-0.5 block">+{visionResult.suggestedProgressDelta}%</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-center">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Days Left</span>
+                        <span className="text-lg font-mono font-extrabold text-amber-400 mt-0.5 block">{visionResult.estimatedDaysRemaining}</span>
+                      </div>
+                    </div>
+
+                    {/* Detected elements */}
+                    {visionResult.detectedElements?.length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 space-y-2">
+                        <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">🔍 Detected Elements</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {visionResult.detectedElements.map((el: string, i: number) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 border border-slate-600/50 text-slate-300">
+                              {el}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Observations */}
+                    {visionResult.observations?.length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50 space-y-2">
+                        <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">📋 AI Observations</p>
+                        <ul className="space-y-1.5">
+                          {visionResult.observations.map((obs: string, i: number) => (
+                            <li key={i} className="flex gap-2 text-slate-400 leading-relaxed">
+                              <span className="text-emerald-500 flex-shrink-0 mt-0.5">•</span>
+                              <span>{obs}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-slate-500 text-center pt-1">
+                      {visionResult.estimatedTimeToCompletion && `Est. completion: ${visionResult.estimatedTimeToCompletion}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

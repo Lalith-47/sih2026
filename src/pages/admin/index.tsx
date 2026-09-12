@@ -487,7 +487,7 @@ function AdminDashboardContent() {
                     return (
                       <tr
                         key={proj.id}
-                        className="hover:bg-slate-50 dark:hover:bg-gray-750/50 transition-colors group"
+                        className="hover:bg-slate-100/70 dark:hover:bg-gray-750/80 transition-colors group"
                       >
                         {/* Project Name & WBS */}
                         <td className="px-6 py-4">
