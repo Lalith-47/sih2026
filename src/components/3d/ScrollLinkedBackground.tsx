@@ -213,7 +213,9 @@ export function ScrollLinkedBackgroundContent() {
   return (
     <div 
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none z-0 select-none overflow-hidden"
+      className={`fixed inset-0 pointer-events-none z-0 select-none overflow-hidden transition-opacity duration-300 ${
+        isLight ? 'opacity-25' : 'opacity-65'
+      }`}
     >
       <Canvas
         camera={{ position: [0, 0, 6], fov: 50 }}

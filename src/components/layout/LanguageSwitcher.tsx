@@ -1,72 +1,145 @@
-import React from 'react';
-import { Globe, Check } from 'lucide-react';
-import { useI18n, Locale, LOCALE_LABELS } from '@/lib/i18n-context';
+import React, { useState, useRef, useEffect } from 'react';
+import { Globe, ChevronDown, Check } from 'lucide-react';
+import { useI18n, Locale } from '@/lib/i18n-context';
 
 export default function LanguageSwitcher() {
   const { locale, setLocale } = useI18n();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const locales: { id: Locale; label: string; short: string }[] = [
-    { id: 'en', label: 'English', short: 'EN' },
-    { id: 'hi', label: 'हिन्दी', short: 'हि' },
-    { id: 'kn', label: 'ಕನ್ನಡ', short: 'ಕ' },
+  const locales: { id: Locale; label: string; native: string; code: string }[] = [
+    { id: 'en', label: 'English', native: 'English', code: 'EN' },
+    { id: 'hi', label: 'Hindi', native: 'हिन्दी', code: 'HI' },
+    { id: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ', code: 'KN' },
   ];
 
-  const cycleLocale = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const order: Locale[] = ['en', 'hi', 'kn'];
-    const currentIndex = order.indexOf(locale);
-    const nextLocale = order[(currentIndex + 1) % order.length];
-    setLocale(nextLocale);
-  };
+  const current = locales.find((l) => l.id === locale) || locales[0];
 
-  const handleSelect = (e: React.MouseEvent, targetLocale: Locale) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Robust outside-click handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 20);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false);
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const selectLanguage = (targetLocale: Locale, e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setLocale(targetLocale);
+    setIsOpen(false);
   };
 
   return (
-    <div 
-      className="inline-flex items-center p-1 rounded-2xl border border-slate-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/90 backdrop-blur-md shadow-sm transition-all"
-      role="group"
-      aria-label="Language Switcher"
-    >
-      {/* 1-Click Cycle Button on Globe Icon */}
+    <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
         type="button"
-        onClick={cycleLocale}
-        title={`Current: ${LOCALE_LABELS[locale]?.label}. Click to cycle language.`}
-        aria-label="Cycle language"
-        className="flex items-center justify-center w-7 h-7 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/40 cursor-pointer mr-1"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        title="Select Language / भाषा चुनें / ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ"
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all duration-150 shadow-xs cursor-pointer ${
+          isOpen
+            ? 'border-emerald-500/60 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-500/50 ring-2 ring-emerald-500/20'
+            : 'border-slate-200/90 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-700 dark:bg-gray-900/90 dark:border-gray-800 dark:text-gray-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300'
+        }`}
       >
-        <Globe className="w-4 h-4 transition-transform hover:scale-110 active:rotate-45" />
+        <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+        <span className="font-medium">{current.native}</span>
+        <ChevronDown
+          className={`w-3 h-3 text-slate-400 dark:text-gray-500 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
       </button>
 
-      {/* Segmented Language Pills - 1-Click Instant Switching */}
-      <div className="flex items-center gap-1">
-        {locales.map((item) => {
-          const isSelected = locale === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={(e) => handleSelect(e, item.id)}
-              aria-pressed={isSelected}
-              title={`Switch language to ${item.label}`}
-              className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
-                isSelected
-                  ? 'bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/25 font-extrabold scale-105'
-                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800/80 font-medium'
-              }`}
-            >
-              <span className="hidden sm:inline">{item.label}</span>
-              <span className="sm:hidden">{item.short}</span>
-              {isSelected && <span className="w-1 h-1 rounded-full bg-gray-950 inline-block ml-0.5" />}
-            </button>
-          );
-        })}
-      </div>
+      {isOpen && (
+        <div
+          role="listbox"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 mt-2 w-48 rounded-2xl bg-white/95 dark:bg-gray-900/95 border border-slate-200/90 dark:border-gray-800 shadow-xl shadow-slate-900/10 dark:shadow-black/50 p-1.5 z-50 animate-fadeIn backdrop-blur-md"
+        >
+          <div className="px-2.5 py-1.5 mb-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-gray-500 border-b border-slate-100 dark:border-gray-800/80">
+            Select Language
+          </div>
+          <div className="space-y-0.5">
+            {locales.map((item) => {
+              const isSelected = locale === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseDown={(e) => selectLanguage(item.id, e)}
+                  onClick={(e) => selectLanguage(item.id, e)}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-500 text-white font-bold shadow-xs shadow-emerald-500/20'
+                      : 'text-slate-700 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {item.code}
+                    </span>
+                    <div className="flex flex-col text-left leading-tight">
+                      <span className="text-xs font-semibold">{item.native}</span>
+                      {item.native !== item.label && (
+                        <span
+                          className={`text-[10px] font-normal ${
+                            isSelected ? 'text-white/80' : 'text-slate-400 dark:text-gray-500'
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

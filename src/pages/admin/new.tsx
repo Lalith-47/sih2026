@@ -5,7 +5,7 @@ import AuthGuard from '@/components/auth/AuthGuard';
 
 export default function NewProjectPage() {
   return (
-    <AuthGuard allowedRoles={['ADMIN']}>
+    <AuthGuard allowedRoles={['ADMIN', 'SUPERVISOR']}>
       <Head>
         <title>Create New Project Baseline | InfraTrack 2026</title>
       </Head>

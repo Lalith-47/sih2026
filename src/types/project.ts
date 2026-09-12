@@ -38,6 +38,7 @@ export interface Project {
   spent: string;
   supervisor: string;
   contractor: string;
+  userId?: string;
   timelineData: TimelinePoint[];
   recentUpdates: ActivityUpdate[];
 }

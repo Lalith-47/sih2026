@@ -18,6 +18,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
+import { getApiBaseUrl } from '@/lib/auth-client';
 
 export interface ManagedUser {
   id: string;
@@ -48,7 +49,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/admin/users`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -73,7 +74,7 @@ export default function UserManagement() {
     setCreating(true);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/admin/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,7 +111,7 @@ export default function UserManagement() {
 
   const handleRoleChange = async (userId: string, targetRole: 'ADMIN' | 'SUPERVISOR' | 'VIEWER') => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/admin/users/${userId}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -137,7 +138,7 @@ export default function UserManagement() {
     }
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/admin/users/${userId}`, {
         method: 'DELETE',
         credentials: 'include',
@@ -193,10 +194,10 @@ export default function UserManagement() {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-              Official Officer Roster & Access Control
+              {t('users.title')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              Only Directors (Admins) have clearance to provision personnel and delegate system roles.
+              {t('users.subtitle')}
             </p>
           </div>
         </div>
@@ -210,7 +211,7 @@ export default function UserManagement() {
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-gray-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all hover:scale-105"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Provision New Officer</span>
+          <span>{t('users.addOfficer')}</span>
         </button>
       </div>
 
@@ -255,7 +256,7 @@ export default function UserManagement() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter officers by name or email..."
+            placeholder={t('users.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         </div>
@@ -272,7 +273,7 @@ export default function UserManagement() {
                   : 'bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-700'
               }`}
             >
-              {r === 'ALL' ? 'All Roles' : r}
+              {r === 'ALL' ? t('users.allRoles') : r}
             </button>
           ))}
 
@@ -293,11 +294,11 @@ export default function UserManagement() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider text-[10px]">
-                <th className="px-5 py-3.5">Officer / Identity</th>
-                <th className="px-5 py-3.5">Current Role & Clearance</th>
-                <th className="px-5 py-3.5">Delegate / Reassign Role</th>
-                <th className="px-5 py-3.5">Enrolled Date</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
+                <th className="px-5 py-3.5">{t('users.colOfficer')}</th>
+                <th className="px-5 py-3.5">{t('users.colRole')}</th>
+                <th className="px-5 py-3.5">{t('users.colDelegate')}</th>
+                <th className="px-5 py-3.5">{t('users.colEnrolled')}</th>
+                <th className="px-5 py-3.5 text-right">{t('users.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-gray-700/60">
@@ -305,13 +306,13 @@ export default function UserManagement() {
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
-                    <span>Loading authorized officer directory...</span>
+                    <span>{t('users.loading')}</span>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-10 text-center text-slate-400">
-                    No officers match your search filters.
+                    {t('users.noOfficers')}
                   </td>
                 </tr>
               ) : (

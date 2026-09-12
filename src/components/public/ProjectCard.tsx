@@ -22,25 +22,25 @@ export const getStatusBadge = (status: ProjectStatus) => {
     case 'ON_TRACK':
       return {
         label: 'On Track',
-        color: 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60',
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-700/60',
         icon: CheckCircle2,
       };
     case 'AT_RISK':
       return {
         label: 'At Risk',
-        color: 'bg-amber-950/80 text-amber-400 border-amber-700/60',
+        color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/80 dark:text-amber-400 dark:border-amber-700/60',
         icon: AlertTriangle,
       };
     case 'DELAYED':
       return {
         label: 'Delayed',
-        color: 'bg-rose-950/80 text-rose-400 border-rose-700/60',
+        color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/80 dark:text-rose-400 dark:border-rose-700/60',
         icon: Clock,
       };
     case 'COMPLETED':
       return {
         label: 'Completed',
-        color: 'bg-blue-950/80 text-blue-400 border-blue-700/60',
+        color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/80 dark:text-blue-400 dark:border-blue-700/60',
         icon: ShieldCheck,
       };
   }

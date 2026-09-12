@@ -165,6 +165,20 @@
     "successMsg": "Project baseline initialized successfully! Redirecting to dashboard...",
     "forbiddenAdminOnly": "Access Restricted: Project baseline creation is restricted to Admin personnel."
   },
+  "users": {
+    "title": "Officer Roster & Access Control",
+    "subtitle": "Provision, audit, and reassign clearance levels across national infrastructure departments.",
+    "addOfficer": "Add New Officer",
+    "searchPlaceholder": "Filter officers by name or email...",
+    "allRoles": "All Roles",
+    "colOfficer": "Officer / Identity",
+    "colRole": "Current Role & Clearance",
+    "colDelegate": "Delegate / Reassign Role",
+    "colEnrolled": "Enrolled Date",
+    "colActions": "Actions",
+    "loading": "Loading authorized officer directory...",
+    "noOfficers": "No officers match your search filters."
+  },
   "common": {
     "loading": "Loading Secure Telemetry...",
     "error": "Error",

@@ -22,7 +22,7 @@ import {
   Check,
   X
 } from 'lucide-react';
-import { useSession } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl } from '@/lib/auth-client';
 import { useI18n } from '@/lib/i18n-context';
 
 interface VisionAssessmentResult {
@@ -35,6 +35,8 @@ interface VisionAssessmentResult {
   detectedElements: string[];
   observations: string[];
   summary: string;
+  previousUpdatesAnalyzed?: string[];
+  newThingsDone?: string[];
 }
 
 interface VisionMeta {
@@ -310,7 +312,7 @@ export default function ProgressUploader({
             reader.onload = async () => {
               try {
                 const base64Data = (reader.result as string).split(',')[1];
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                const apiBase = getApiBaseUrl();
                 const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -415,7 +417,7 @@ export default function ProgressUploader({
     setVisionError('');
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/ai/vision-estimate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -489,6 +491,9 @@ export default function ProgressUploader({
     } else if (channel === 'VISION') {
       if (!visionResult) return;
       notes = `[AI Drone & Site Photo Inspection]\nPending Work: ${visionResult.pendingWorkPercent}%\nEstimated Remaining Time: ${visionResult.estimatedTimeToCompletion}\nAI Confidence Score: ${visionResult.confidenceScore}%\nSummary: ${visionResult.summary}\nDetected: ${visionResult.detectedElements.join(', ')}`;
+      if (visionResult.newThingsDone && visionResult.newThingsDone.length > 0) {
+        notes += `\nNew Completed Work: ${visionResult.newThingsDone.join('; ')}`;
+      }
       delta = visionResult.suggestedProgressDelta;
       tags = ['#AIVisionInspection', '#DronePhotoTelemetry', '#OpenAI'];
     }
@@ -522,7 +527,7 @@ export default function ProgressUploader({
     setSuccessMessage('');
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/projects/${projectId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1297,6 +1302,42 @@ export default function ProgressUploader({
                   ))}
                 </div>
               </div>
+
+              {/* Previous Updates Analyzed from DB */}
+              {visionResult.previousUpdatesAnalyzed && visionResult.previousUpdatesAnalyzed.length > 0 && (
+                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-gray-800/40 p-3 rounded-xl border border-slate-200 dark:border-gray-700/60">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 block mb-1 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-500" />
+                    Historical Updates Analyzed ({visionResult.previousUpdatesAnalyzed.length}):
+                  </span>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                    {visionResult.previousUpdatesAnalyzed.map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* New Things Done / Completed Since Last Update */}
+              {visionResult.newThingsDone && visionResult.newThingsDone.length > 0 && (
+                <div className="space-y-1.5 text-xs text-emerald-800 dark:text-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-300 block mb-1.5 flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    New Things Done Since Last Update:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {visionResult.newThingsDone.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-2.5 py-1 rounded-lg font-medium bg-white dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/70 shadow-xs flex items-center gap-1.5"
+                      >
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 font-bold" />
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Engineering Observations */}
               <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-gray-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-gray-700/60">

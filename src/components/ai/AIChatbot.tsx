@@ -7,21 +7,37 @@ import {
   RefreshCw, 
   Database, 
   Building2, 
-  Minimize2,
-  Maximize2,
-  Paperclip,
-  ImageIcon,
-  Camera,
-  Layers,
-  Clock,
-  ShieldCheck,
-  Mic,
-  Square,
-  Loader2,
-  Volume2,
-  VolumeX
+  Minimize2, 
+  Maximize2, 
+  Paperclip, 
+  ImageIcon, 
+  Camera, 
+  Layers, 
+  Clock, 
+  ShieldCheck, 
+  Mic, 
+  Square, 
+  Loader2, 
+  Volume2, 
+  VolumeX,
+  Link2,
+  CheckCircle2,
+  Check,
+  ChevronDown
 } from 'lucide-react';
-import { useSession } from '@/lib/auth-client';
+import { useSession, getApiBaseUrl } from '@/lib/auth-client';
+import { Project } from '@/types/project';
+
+interface UpdateProposal {
+  projectId: string;
+  projectName: string;
+  currentProgress: number;
+  suggestedDelta: number;
+  newProgress: number;
+  suggestedNotes: string;
+  newThingsDone?: string[];
+  confidenceScore?: number;
+}
 
 interface ChatMessage {
   id: string;
@@ -32,9 +48,11 @@ interface ChatMessage {
   timestamp: string;
   source?: string;
   note?: string;
+  linkedProject?: { id: string; name: string } | null;
+  updateProposal?: UpdateProposal | null;
 }
 
-const QUICK_PROMPTS = [
+const GENERAL_QUICK_PROMPTS = [
   'What projects are currently active?',
   'Are any projects at risk or delayed?',
   'Show NH-48 progress and budget',
@@ -47,6 +65,32 @@ export default function AIChatbot() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Live Projects linking state
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [linkedProjectId, setLinkedProjectId] = useState<string>('');
+  const [committingUpdateId, setCommittingUpdateId] = useState<string | null>(null);
+
+  // Fetch live projects from Neon PostgreSQL for linking
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/api/projects`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setProjects(data);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch projects for AI linking', e);
+      }
+    };
+    if (isOpen) {
+      fetchProjects();
+    }
+  }, [isOpen]);
 
   // Image attachment state for the chatbot
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -150,7 +194,7 @@ export default function AIChatbot() {
     setLoadingTtsMessageId(messageId);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/ai/text-to-speech`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -225,7 +269,7 @@ export default function AIChatbot() {
                 const base64Data = (reader.result as string).split(',')[1];
                 if (!base64Data) throw new Error('Failed to encode audio data.');
 
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                const apiBase = getApiBaseUrl();
                 const res = await fetch(`${apiBase}/api/ai/audio-transcribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -307,9 +351,18 @@ export default function AIChatbot() {
   useEffect(() => {
     if (isOpen && !isMinimized) {
       scrollToBottom();
-      inputRef.current?.focus();
     }
   }, [isOpen, isMinimized, messages]);
+
+  // Focus input once when chat opens
+  useEffect(() => {
+    if (isOpen && !isMinimized) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isMinimized]);
 
   // Handle image selection
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,6 +393,44 @@ export default function AIChatbot() {
     setAttachedImageSize(null);
   };
 
+  const handleCommitUpdateProposal = async (proposal: UpdateProposal, messageId: string) => {
+    setCommittingUpdateId(messageId);
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/projects/${proposal.projectId}/updates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          channel: 'TEXT',
+          notes: proposal.suggestedNotes,
+          progressDelta: proposal.suggestedDelta,
+          author: session?.user?.name || 'Site Supervisor (AI Verified)',
+          tags: ['#AIVisionInspection', '#VerifiedUpdate', '#AIChatbot'],
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to persist update to database');
+      }
+
+      // Append confirmation bot message
+      const confirmMsg: ChatMessage = {
+        id: `confirm-${Date.now()}`,
+        sender: 'assistant',
+        text: `✅ **Update Committed to Database!**\n- **Project**: ${proposal.projectName}\n- **Ledger Delta**: +${proposal.suggestedDelta}%\n- **New Recorded Progress**: **${proposal.newProgress}%**\n\nThe project ledger and telemetry have been updated in PostgreSQL.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: 'realtime-database-engine',
+      };
+      setMessages((prev) => [...prev, confirmMsg]);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to commit update');
+    } finally {
+      setCommittingUpdateId(null);
+    }
+  };
+
   const handleSendMessage = async (userText?: string) => {
     const textToSend = userText || inputMessage;
     if ((!textToSend.trim() && !attachedImage) || loading) return;
@@ -362,13 +453,14 @@ export default function AIChatbot() {
     setLoading(true);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           message: textToSend.trim(),
+          projectId: linkedProjectId || undefined,
           imageBase64: currentImage || undefined,
           history: messages.slice(-6).map((m) => ({
             role: m.sender === 'user' ? 'user' : 'assistant',
@@ -390,6 +482,8 @@ export default function AIChatbot() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         source: data.source,
         note: data.note,
+        linkedProject: data.linkedProject,
+        updateProposal: data.updateProposal,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -411,7 +505,9 @@ export default function AIChatbot() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // If user is composing with an IME (Chinese, Japanese, etc.), don't submit
+    if ((e.nativeEvent as any).isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -502,6 +598,35 @@ export default function AIChatbot() {
           {/* Body when not minimized */}
           {!isMinimized && (
             <>
+              {/* Linked Project Context Selector Bar */}
+              <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium overflow-hidden">
+                  <Link2 className={`w-3.5 h-3.5 flex-shrink-0 ${linkedProjectId ? 'text-emerald-500' : 'text-slate-400'}`} />
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Link Project:</span>
+                  <select
+                    value={linkedProjectId}
+                    onChange={(e) => setLinkedProjectId(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-medium px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-w-[200px] truncate"
+                  >
+                    <option value="">National Overview (All Projects)</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} — {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {linkedProjectId && (
+                  <button
+                    onClick={() => setLinkedProjectId('')}
+                    title="Clear linked project"
+                    className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1.5 py-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
               {/* Message List */}
               <div className="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs">
                 {messages.map((msg) => (
@@ -532,6 +657,14 @@ export default function AIChatbot() {
                         </div>
                       )}
 
+                      {/* Linked Project Badge in Bubble */}
+                      {msg.linkedProject && (
+                        <div className="mb-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-semibold w-fit">
+                          <Building2 className="w-3 h-3" />
+                          <span>Linked: {msg.linkedProject.name}</span>
+                        </div>
+                      )}
+
                       {/* Formatted Markdown-like rendering */}
                       <div className="whitespace-pre-wrap font-sans space-y-1">
                         {msg.text.split('\n').map((line, lIdx) => {
@@ -552,6 +685,55 @@ export default function AIChatbot() {
                           );
                         })}
                       </div>
+
+                      {/* Interactive Update Proposal Card (Review & Commit to PostgreSQL) */}
+                      {msg.updateProposal && (
+                        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-slate-800 dark:text-slate-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 text-xs">
+                              <ShieldCheck className="w-4 h-4 text-amber-500" />
+                              AI Telemetry Update Proposal
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                              +{msg.updateProposal.suggestedDelta}% Progress
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                            <p><strong>Corridor:</strong> {msg.updateProposal.projectName}</p>
+                            <p><strong>Current:</strong> {msg.updateProposal.currentProgress}% ➔ <strong>Projected:</strong> {msg.updateProposal.newProgress}%</p>
+                            {msg.updateProposal.newThingsDone && msg.updateProposal.newThingsDone.length > 0 && (
+                              <div className="pt-1">
+                                <span className="font-semibold text-[10px] text-slate-700 dark:text-slate-300 block mb-0.5">Detected New Work:</span>
+                                <ul className="list-disc pl-3.5 space-y-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
+                                  {msg.updateProposal.newThingsDone.map((item, iIdx) => (
+                                    <li key={iIdx}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCommitUpdateProposal(msg.updateProposal!, msg.id)}
+                            disabled={committingUpdateId === msg.id}
+                            className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all"
+                          >
+                            {committingUpdateId === msg.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Persisting to Database...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Review & Update Database (+{msg.updateProposal.suggestedDelta}%)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
 
                       {msg.note && (
                         <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[10px] text-slate-500 dark:text-slate-400 italic">
@@ -632,18 +814,30 @@ export default function AIChatbot() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Prompts */}
+              {/* Quick Prompts - Adaptively dynamic based on linked project */}
               <div className="px-3 py-2 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto flex gap-1.5 no-scrollbar flex-shrink-0">
-                {QUICK_PROMPTS.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    disabled={loading}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-medium bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700/80 transition-colors flex-shrink-0"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+                {(() => {
+                  const activeProject = projects.find((p) => p.id === linkedProjectId);
+                  const promptsToRender = activeProject
+                    ? [
+                        `Explain project ${activeProject.code}`,
+                        `Analyze variance & delays for ${activeProject.code}`,
+                        `Financial & budget status of ${activeProject.code}`,
+                        `What new things are done in ${activeProject.code}?`,
+                      ]
+                    : GENERAL_QUICK_PROMPTS;
+
+                  return promptsToRender.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      disabled={loading}
+                      onClick={() => handleSendMessage(prompt)}
+                      className="whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-medium bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700/80 transition-colors flex-shrink-0"
+                    >
+                      {prompt}
+                    </button>
+                  ));
+                })()}
               </div>
 
               {/* Image Preview Banner when user has chosen a file */}
